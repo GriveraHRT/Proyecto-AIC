@@ -332,7 +332,7 @@ function procesarCierreSemana() {
     sheetErrores.getRange(2, 1, sheetErrores.getMaxRows() - 1, sheetErrores.getMaxColumns()).clearContent();
   }
 
-  var pizarras = ["Pizarra_Muestras", "Pizarra_Curvas", "Pizarra_Urgentes", "Pizarra_Recordatorios", "Pizarra_Custom"];
+  var pizarras = ["Pizarra_Curvas", "Pizarra_Urgentes", "Pizarra_Custom"];
   for (var p = 0; p < pizarras.length; p++) {
     var s = ss.getSheetByName(pizarras[p]);
     if (s && s.getMaxRows() > 1) {
