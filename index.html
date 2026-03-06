@@ -620,11 +620,14 @@
           <p class="text-[9px]" style="color:var(--text-dim);margin-top:-2px;">Gestión de Laboratorio</p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-4">
         <div class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-muted);">
           <div class="sync-dot" id="syncDot"></div><span id="syncLabel">Sincronizado</span>
         </div>
-        <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema"></button>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] font-medium" style="color:var(--text-muted);" id="themeLabel">🌙 Modo oscuro</span>
+          <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema"></button>
+        </div>
       </div>
     </div>
     <div class="max-w-7xl mx-auto px-4 pb-2.5">
@@ -632,7 +635,8 @@
         <button class="nav-tab active" data-tab="errores" onclick="switchTab('errores')">📋 Errores</button>
         <button class="nav-tab" data-tab="pizarra" onclick="switchTab('pizarra')">🧪 Pizarra</button>
         <button class="nav-tab" data-tab="centros" onclick="switchTab('centros')">🏥 Centros</button>
-        <button class="nav-tab" data-tab="chat" onclick="switchTab('chat')">💬 Chat</button>
+        <!-- Chat oculto por ahora -->
+        <button class="nav-tab" data-tab="chat" onclick="switchTab('chat')" style="display:none;">💬 Chat</button>
         <button class="nav-tab" data-tab="stats" onclick="switchTab('stats')">📊 Estadísticas</button>
         <button class="nav-tab" data-tab="admin" onclick="switchTab('admin')">⚙️ Admin</button>
       </nav>
@@ -702,7 +706,7 @@
     <section id="panel-pizarra" class="module-panel">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
         <div class="glass-card p-4">
-          <h2 class="text-sm font-bold mb-1">🧊 Muestras Especiales</h2>
+          <h2 class="text-sm font-bold mb-1">🧊 Muestras Guardadas</h2>
           <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Refrigerada (R10) y Congelada (C1)</p>
           <div class="grid grid-cols-3 gap-1.5 mb-2.5">
             <select id="muestraTipo" class="select-field text-xs">
@@ -722,6 +726,7 @@
                   <tr style="background:var(--bg-input);">
                     <th class="text-left px-2 py-1" style="color:var(--text-muted);">Petición</th>
                     <th class="text-left px-2 py-1" style="color:var(--text-muted);">Examen</th>
+                    <th class="text-center px-2 py-1" style="color:var(--text-muted);">Almacenada</th>
                     <th class="w-5"></th>
                   </tr>
                 </thead>
@@ -737,6 +742,7 @@
                   <tr style="background:var(--bg-input);">
                     <th class="text-left px-2 py-1" style="color:var(--text-muted);">Petición</th>
                     <th class="text-left px-2 py-1" style="color:var(--text-muted);">Examen</th>
+                    <th class="text-center px-2 py-1" style="color:var(--text-muted);">Almacenada</th>
                     <th class="w-5"></th>
                   </tr>
                 </thead>

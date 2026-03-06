@@ -10,7 +10,7 @@ function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = {
     "Errores": ["Fecha", "Día", "Acción", "N° Petición", "Examen", "Usuario"],
-    "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen"],
+    "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen", "Almacenada"],
     "Pizarra_Curvas": ["ID", "N° Petición", "Validada"],
     "Pizarra_Urgentes": ["ID", "N° Petición", "Validada"],
     "Pizarra_Recordatorios": ["ID", "Texto", "Usuario", "Fecha"],

@@ -40,10 +40,16 @@ function toggleTheme() {
   const next = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
   html.setAttribute("data-theme", next);
   localStorage.setItem("labcontrol_theme", next);
+  updateThemeLabel(next);
 }
 function loadTheme() {
   const saved = localStorage.getItem("labcontrol_theme");
   if (saved) document.documentElement.setAttribute("data-theme", saved);
+  updateThemeLabel(saved || "dark");
+}
+function updateThemeLabel(theme) {
+  const lbl = document.getElementById("themeLabel");
+  if (lbl) lbl.textContent = theme === "dark" ? "🌙 Modo oscuro" : "☀️ Modo claro";
 }
 
 // ===================== TABS =====================
@@ -235,9 +241,47 @@ function renderErrores() {
 }
 
 // ===================== MUESTRAS =====================
-function addMuestra() { const t = document.getElementById("muestraTipo").value, p = document.getElementById("muestraPeticion").value.trim(), e = document.getElementById("muestraExamen").value; if (!p || !e) { showToast("Completa Petición y Examen", "error"); return; } const id = Date.now().toString(); datos.muestras.push({ ID: id, Tipo: t, "N° Petición": p, Examen: e }); renderMuestras(); apiPostBg({ action: "insert", sheet: "Pizarra_Muestras", row: [id, t, p, e] }); document.getElementById("muestraPeticion").value = ""; document.getElementById("muestraExamen").value = ""; showToast("✓ Muestra", "success"); }
+function addMuestra() {
+  const t = document.getElementById("muestraTipo").value, p = document.getElementById("muestraPeticion").value.trim(), e = document.getElementById("muestraExamen").value;
+  if (!p || !e) { showToast("Completa Petición y Examen", "error"); return; }
+  const id = Date.now().toString();
+  datos.muestras.push({ ID: id, Tipo: t, "N° Petición": p, Examen: e, Almacenada: "No" });
+  renderMuestras();
+  apiPostBg({ action: "insert", sheet: "Pizarra_Muestras", row: [id, t, p, e, "No"] });
+  document.getElementById("muestraPeticion").value = "";
+  document.getElementById("muestraExamen").value = "";
+  showToast("✓ Muestra", "success");
+}
 function deleteMuestra(id) { datos.muestras = datos.muestras.filter(m => m.ID !== id); renderMuestras(); apiPostBg({ action: "delete", sheet: "Pizarra_Muestras", id }); }
-function renderMuestras() { const mk = (arr, id, lbl) => { document.getElementById(id).innerHTML = arr.length === 0 ? `<tr><td colspan="3" class="px-2 py-2.5 text-center text-[9px] italic" style="color:var(--text-dim);">Sin muestras</td></tr>` : arr.map(m => `<tr class="row-hover" style="border-bottom:1px solid var(--border);"><td class="px-2 py-1 font-mono text-xs">${m["N° Petición"] || ""}</td><td class="px-2 py-1"><span class="exam-pill">${m.Examen || ""}</span></td><td class="px-1"><button onclick="deleteMuestra('${m.ID}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">✕</button></td></tr>`).join(""); }; mk(datos.muestras.filter(m => m.Tipo && m.Tipo.includes("R10")), "tablaR10", "R10"); mk(datos.muestras.filter(m => m.Tipo && m.Tipo.includes("C1")), "tablaC1", "C1"); }
+function toggleMuestraAlmacenada(id, val) {
+  const item = datos.muestras.find(m => m.ID === id);
+  if (item) item.Almacenada = val;
+  renderMuestras();
+  apiPostBg({ action: "update", sheet: "Pizarra_Muestras", id, updates: { Almacenada: val } });
+}
+function renderMuestras() {
+  const mk = (arr, tbId) => {
+    document.getElementById(tbId).innerHTML = arr.length === 0
+      ? `<tr><td colspan="4" class="px-2 py-2.5 text-center text-[9px] italic" style="color:var(--text-dim);">Sin muestras</td></tr>`
+      : arr.map(m => {
+        const alm = m.Almacenada === "Sí" || m.Almacenada === "Si";
+        const cls = alm ? "st-revisado" : "st-no-revisado";
+        return `<tr class="row-hover" style="border-bottom:1px solid var(--border);">
+          <td class="px-2 py-1 font-mono text-xs">${m["N° Petición"] || ""}</td>
+          <td class="px-2 py-1"><span class="exam-pill">${m.Examen || ""}</span></td>
+          <td class="px-2 py-1 text-center">
+            <select onchange="toggleMuestraAlmacenada('${m.ID}',this.value)" class="${cls}" style="font-size:.6rem;font-weight:700;padding:.15rem .4rem;border-radius:9999px;cursor:pointer;background:transparent;">
+              <option value="No" ${!alm ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">❌ No</option>
+              <option value="Sí" ${alm ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">✅ Sí</option>
+            </select>
+          </td>
+          <td class="px-1"><button onclick="deleteMuestra('${m.ID}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">✕</button></td>
+        </tr>`;
+      }).join("");
+  };
+  mk(datos.muestras.filter(m => m.Tipo && m.Tipo.includes("R10")), "tablaR10");
+  mk(datos.muestras.filter(m => m.Tipo && m.Tipo.includes("C1")), "tablaC1");
+}
 
 // ===================== CURVAS / URGENTES =====================
 function addCurva() { const p = document.getElementById("curvaPeticion").value.trim(); if (!p) { showToast("Petición", "error"); return; } const id = Date.now().toString(); datos.curvas.push({ ID: id, "N° Petición": p, Validada: "No" }); renderCurvas(); apiPostBg({ action: "insert", sheet: "Pizarra_Curvas", row: [id, p, "No"] }); document.getElementById("curvaPeticion").value = ""; showToast("✓ Curva", "success"); }
