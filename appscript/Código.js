@@ -99,16 +99,22 @@ function doGet(e) {
   var getSheetData = function (name) {
     var sheet = ss.getSheetByName(name);
     if (!sheet) return [];
-    var data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return [];
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow <= 1 || lastCol === 0) return [];
+    var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
     var headers = data[0];
     var rows = [];
     for (var i = 1; i < data.length; i++) {
       var obj = {};
+      var hasData = false;
       for (var j = 0; j < headers.length; j++) {
-        obj[headers[j]] = data[i][j] ? data[i][j].toString() : "";
+        if (headers[j]) {
+          obj[headers[j]] = data[i][j] !== undefined && data[i][j] !== null ? data[i][j].toString() : "";
+          if (data[i][j]) hasData = true;
+        }
       }
-      rows.push(obj);
+      if (hasData) rows.push(obj);
     }
     return rows;
   };
@@ -160,6 +166,7 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  migrateHeaders();
   var output = ContentService.createTextOutput();
   output.setMimeType(ContentService.MimeType.JSON);
   try {
