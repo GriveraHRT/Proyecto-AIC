@@ -18,7 +18,7 @@ const ESTADOS_CENTRO = [
   { value: "NO REVISADO :(", label: "NO REVISADO :(", css: "st-no-revisado" },
   { value: "REVISADO :)", label: "REVISADO :)", css: "st-revisado" },
   { value: "EN PROCESO", label: "EN PROCESO", css: "st-en-proceso" },
-  { value: "TODO VALIDADO", label: "TODO VALIDADO ✓", css: "st-todo-validado" },
+  { value: "TODO VALIDADO", label: "🔥 TODO VALIDADO", css: "st-todo-validado" },
   { value: "NO LLEGÓ", label: "NO LLEGÓ", css: "st-no-llego" }
 ];
 
