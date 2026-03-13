@@ -10,12 +10,12 @@ function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = {
     "Errores": ["Fecha", "Día", "Acción", "N° Petición", "Examen", "Usuario"],
-    "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen", "Almacenada"],
-    "Pizarra_Curvas": ["ID", "N° Petición", "Validada"],
-    "Pizarra_Urgentes": ["ID", "N° Petición", "Validada"],
+    "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen", "Almacenada", "Fecha"],
+    "Pizarra_Curvas": ["ID", "N° Petición", "Validada", "Fecha"],
+    "Pizarra_Urgentes": ["ID", "N° Petición", "Validada", "Fecha"],
     "Pizarra_Recordatorios": ["ID", "Texto", "Usuario", "Fecha"],
     "Pizarra_Custom": ["Cuadrante", "ID", "N° Petición", "Detalle"],
-    "Centros": ["Centro", "Estado", "Pdte Rev", "Pdte Val", "Responsable"],
+    "Centros": ["Centro", "Estado", "Pdte Rev", "Pdte Val", "Rev Hasta", "Responsable"],
     "Maestro_Examenes": ["Examen"],
     "Chat": ["ID", "Usuario", "Mensaje", "Fecha"]
   };
@@ -32,19 +32,19 @@ function setup() {
   var centrosSheet = ss.getSheetByName("Centros");
   if (centrosSheet.getLastRow() <= 1) {
     var centros = [
-      ["Cachureo", "NO REVISADO :(", "", "", ""],
-      ["San Clemente", "NO REVISADO :(", "", "", ""],
-      ["Maule", "NO REVISADO :(", "", "", ""],
-      ["Externos", "NO REVISADO :(", "", "", ""],
-      ["Hospitalizados", "NO REVISADO :(", "", "", ""],
-      ["Ambulatorio", "NO REVISADO :(", "", "", ""],
-      ["San Rafael", "NO REVISADO :(", "", "", ""],
-      ["Rio Claro", "NO REVISADO :(", "", "", ""],
-      ["Pencahue", "NO REVISADO :(", "", "", ""],
-      ["Pelarco", "NO REVISADO :(", "", "", ""],
-      ["TOMA DE MUESTRA", "NO REVISADO :(", "", "", ""]
+      ["Cachureo", "NO REVISADO :(", "", "", "", ""],
+      ["San Clemente", "NO REVISADO :(", "", "", "", ""],
+      ["Maule", "NO REVISADO :(", "", "", "", ""],
+      ["Externos", "NO REVISADO :(", "", "", "", ""],
+      ["Hospitalizados", "NO REVISADO :(", "", "", "", ""],
+      ["Ambulatorio", "NO REVISADO :(", "", "", "", ""],
+      ["San Rafael", "NO REVISADO :(", "", "", "", ""],
+      ["Rio Claro", "NO REVISADO :(", "", "", "", ""],
+      ["Pencahue", "NO REVISADO :(", "", "", "", ""],
+      ["Pelarco", "NO REVISADO :(", "", "", "", ""],
+      ["TOMA DE MUESTRA", "NO REVISADO :(", "", "", "", ""]
     ];
-    centrosSheet.getRange(2, 1, centros.length, 5).setValues(centros);
+    centrosSheet.getRange(2, 1, centros.length, 6).setValues(centros);
   }
 
   // Poblar Maestro Exámenes
@@ -151,6 +151,16 @@ function handleAction(payload) {
   var action = payload.action;
 
   if (action === "cerrar_semana") return procesarCierreSemana();
+
+  if (action === "reset_centros") {
+    var centrosSheet = ss.getSheetByName("Centros");
+    if (!centrosSheet) throw new Error("No se encontró la hoja Centros");
+    var cd = centrosSheet.getDataRange().getValues();
+    for (var i = 1; i < cd.length; i++) {
+      centrosSheet.getRange(i + 1, 2, 1, 5).setValues([["NO REVISADO :(", "", "", "", ""]]);
+    }
+    return "Centros reiniciados.";
+  }
 
   var sheet = ss.getSheetByName(payload.sheet);
   if (!sheet) throw new Error("No se encontró la hoja: " + payload.sheet);
@@ -344,7 +354,7 @@ function procesarCierreSemana() {
   if (centrosSheet) {
     var cd = centrosSheet.getDataRange().getValues();
     for (var i = 1; i < cd.length; i++) {
-      centrosSheet.getRange(i + 1, 2, 1, 4).setValues([["NO REVISADO :(", "", "", ""]]);
+      centrosSheet.getRange(i + 1, 2, 1, 5).setValues([["NO REVISADO :(", "", "", "", ""]]);
     }
   }
 
