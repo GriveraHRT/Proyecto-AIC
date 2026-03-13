@@ -247,34 +247,7 @@ function deleteError(idx) {
   });
 }
 
-function editError(idx) {
-  const e = datos.errores[idx];
-  if (!e) return;
-  const newPet = prompt("N° Petición:", e["N° Petición"]);
-  if (newPet === null) return;
-  const newExam = prompt("Examen:", e.Examen);
-  if (newExam === null) return;
-  const newUsr = prompt("Usuario:", e.Usuario);
-  if (newUsr === null) return;
-  // Update locally
-  const oldPet = e["N° Petición"];
-  e["N° Petición"] = newPet.trim() || oldPet;
-  e.Examen = newExam.trim().toUpperCase() || e.Examen;
-  e.Usuario = newUsr.trim().toLowerCase() || e.Usuario;
-  renderErrores();
-  // Delete old and re-insert all with old petition, plus updated one
-  apiPostBg({ action: "delete_by_col", sheet: "Errores", column: "N° Petición", value: oldPet });
-  const sameGroup = datos.errores.filter(r => r["N° Petición"] === oldPet || r === e);
-  // Re-insert all that had the old petition
-  datos.errores.filter(r => r["N° Petición"] === oldPet).forEach(r => {
-    apiPostBg({ action: "insert", sheet: "Errores", row: [r.Fecha, r["Día"], r["Acción"], r["N° Petición"], r.Examen, r.Usuario] });
-  });
-  // If petition changed, also insert the new one
-  if (e["N° Petición"] !== oldPet) {
-    apiPostBg({ action: "insert", sheet: "Errores", row: [e.Fecha, e["Día"], e["Acción"], e["N° Petición"], e.Examen, e.Usuario] });
-  }
-  showToast("Registro actualizado", "success");
-}
+
 
 function renderErrores() {
   const c = document.getElementById("diasContainer"), dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
@@ -285,9 +258,9 @@ function renderErrores() {
     const findIdx = (item) => datos.errores.indexOf(item);
     return `<div class="glass-card overflow-hidden"><div class="px-2.5 py-2" style="border-bottom:1px solid var(--border);background:var(--bg-input);"><h3 class="text-xs font-bold">${dia}</h3><span class="text-[9px]" style="color:var(--text-dim);">${del.length} reg.</span></div>
     <div class="p-2" style="border-bottom:1px solid var(--border);"><div class="flex items-center gap-1 mb-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#22c55e;"></span><span class="text-[9px] font-bold uppercase" style="color:var(--green-text);">Agregados (${ag.length})</span></div>
-    ${ag.length === 0 ? '<p class="text-[9px] italic" style="color:var(--text-dim);">—</p>' : ag.map(e => `<div class="flex items-center justify-between py-0.5 px-1 rounded mb-0.5" style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);"><div><span class="text-[9px] font-mono" style="color:var(--text);">#${e["N° Petición"] || ""}</span> <span class="exam-pill ml-0.5">${e.Examen || ""}</span></div><div class="flex items-center gap-1"><span class="text-[8px]" style="color:var(--text-dim);">${e.Usuario || ""}</span><button onclick="editError(${findIdx(e)})" class="text-[8px]" style="color:var(--accent);cursor:pointer;" title="Editar">✏️</button><button onclick="deleteError(${findIdx(e)})" class="text-[8px]" style="color:var(--red-text);cursor:pointer;" title="Eliminar">🗑</button></div></div>`).join("")}
+    ${ag.length === 0 ? '<p class="text-[9px] italic" style="color:var(--text-dim);">—</p>' : ag.map(e => `<div class="flex items-center justify-between py-0.5 px-1 rounded mb-0.5" style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);"><div><span class="text-[9px] font-mono" style="color:var(--text);">#${e["N° Petición"] || ""}</span> <span class="exam-pill ml-0.5">${e.Examen || ""}</span></div><div class="flex items-center gap-1"><span class="text-[8px]" style="color:var(--text-dim);">${e.Usuario || ""}</span><button onclick="deleteError(${findIdx(e)})" class="text-[8px]" style="color:var(--red-text);cursor:pointer;" title="Eliminar">🗑</button></div></div>`).join("")}
     </div><div class="p-2"><div class="flex items-center gap-1 mb-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#ef4444;"></span><span class="text-[9px] font-bold uppercase" style="color:var(--red-text);">Eliminados (${el.length})</span></div>
-    ${el.length === 0 ? '<p class="text-[9px] italic" style="color:var(--text-dim);">—</p>' : el.map(e => `<div class="flex items-center justify-between py-0.5 px-1 rounded mb-0.5" style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);"><div><span class="text-[9px] font-mono" style="color:var(--text);">#${e["N° Petición"] || ""}</span> <span class="exam-pill exam-pill-red ml-0.5">${e.Examen || ""}</span></div><div class="flex items-center gap-1"><span class="text-[8px]" style="color:var(--text-dim);">${e.Usuario || ""}</span><button onclick="editError(${findIdx(e)})" class="text-[8px]" style="color:var(--accent);cursor:pointer;" title="Editar">✏️</button><button onclick="deleteError(${findIdx(e)})" class="text-[8px]" style="color:var(--red-text);cursor:pointer;" title="Eliminar">🗑</button></div></div>`).join("")}
+    ${el.length === 0 ? '<p class="text-[9px] italic" style="color:var(--text-dim);">—</p>' : el.map(e => `<div class="flex items-center justify-between py-0.5 px-1 rounded mb-0.5" style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);"><div><span class="text-[9px] font-mono" style="color:var(--text);">#${e["N° Petición"] || ""}</span> <span class="exam-pill exam-pill-red ml-0.5">${e.Examen || ""}</span></div><div class="flex items-center gap-1"><span class="text-[8px]" style="color:var(--text-dim);">${e.Usuario || ""}</span><button onclick="deleteError(${findIdx(e)})" class="text-[8px]" style="color:var(--red-text);cursor:pointer;" title="Eliminar">🗑</button></div></div>`).join("")}
     </div></div>`;
   }).join("");
 }
@@ -473,13 +446,13 @@ function renderStats() {
   const exAgCount = {}; ag.forEach(e => { const x = e.Examen || "?"; exAgCount[x] = (exAgCount[x] || 0) + 1; });
   const topExAg = Object.entries(exAgCount).sort((a, b) => b[1] - a[1]).slice(0, 15);
   const maxEAg = topExAg.length ? topExAg[0][1] : 1;
-  document.getElementById("statsTopExAgregados").innerHTML = topExAg.length === 0 ? '<p class="text-[10px] italic" style="color:var(--text-dim);">Sin datos</p>' : topExAg.map(([x, c]) => `<div class="flex items-center gap-2"><span class="text-[10px] font-bold" style="width:80px;"><span class="exam-pill">${esc(x)}</span></span><div class="flex-1 rounded-full overflow-hidden" style="height:14px;background:var(--bg-input);"><div style="height:100%;width:${(c / maxEAg * 100).toFixed(0)}%;background:linear-gradient(90deg,#22c55e,#10b981);border-radius:9999px;"></div></div><span class="text-[10px] font-bold" style="color:var(--green-text);width:25px;text-align:right;">${c}</span></div>`).join("");
+  document.getElementById("statsTopExAgregados").innerHTML = topExAg.length === 0 ? '<p class="text-[10px] italic" style="color:var(--text-dim);">Sin datos</p>' : topExAg.map(([x, c]) => `<div style="margin-bottom:6px;"><div class="flex items-center justify-between"><span class="text-[9px] font-bold" style="color:var(--text);">${esc(x)}</span><span class="text-[10px] font-bold" style="color:var(--green-text);">${c}</span></div><div class="rounded-full overflow-hidden" style="height:10px;background:var(--bg-input);margin-top:2px;"><div style="height:100%;width:${(c / maxEAg * 100).toFixed(0)}%;background:linear-gradient(90deg,#22c55e,#10b981);border-radius:9999px;"></div></div></div>`).join("");
 
   // Top exámenes ELIMINADOS
   const exElCount = {}; el.forEach(e => { const x = e.Examen || "?"; exElCount[x] = (exElCount[x] || 0) + 1; });
   const topExEl = Object.entries(exElCount).sort((a, b) => b[1] - a[1]).slice(0, 15);
   const maxEEl = topExEl.length ? topExEl[0][1] : 1;
-  document.getElementById("statsTopExEliminados").innerHTML = topExEl.length === 0 ? '<p class="text-[10px] italic" style="color:var(--text-dim);">Sin datos</p>' : topExEl.map(([x, c]) => `<div class="flex items-center gap-2"><span class="text-[10px] font-bold" style="width:80px;"><span class="exam-pill exam-pill-red">${esc(x)}</span></span><div class="flex-1 rounded-full overflow-hidden" style="height:14px;background:var(--bg-input);"><div style="height:100%;width:${(c / maxEEl * 100).toFixed(0)}%;background:linear-gradient(90deg,#ef4444,#dc2626);border-radius:9999px;"></div></div><span class="text-[10px] font-bold" style="color:var(--red-text);width:25px;text-align:right;">${c}</span></div>`).join("");
+  document.getElementById("statsTopExEliminados").innerHTML = topExEl.length === 0 ? '<p class="text-[10px] italic" style="color:var(--text-dim);">Sin datos</p>' : topExEl.map(([x, c]) => `<div style="margin-bottom:6px;"><div class="flex items-center justify-between"><span class="text-[9px] font-bold" style="color:var(--text);">${esc(x)}</span><span class="text-[10px] font-bold" style="color:var(--red-text);">${c}</span></div><div class="rounded-full overflow-hidden" style="height:10px;background:var(--bg-input);margin-top:2px;"><div style="height:100%;width:${(c / maxEEl * 100).toFixed(0)}%;background:linear-gradient(90deg,#ef4444,#dc2626);border-radius:9999px;"></div></div></div>`).join("");
 }
 
 // ===================== ALERTAS =====================

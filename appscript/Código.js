@@ -66,8 +66,34 @@ function setup() {
     maestroSheet.getRange(2, 1, rows.length, 1).setValues(rows);
   }
 }
+/**
+ * Auto-migrar headers: agrega columnas faltantes a hojas existentes
+ */
+function migrateHeaders() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var expected = {
+    "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen", "Almacenada", "Fecha"],
+    "Pizarra_Curvas": ["ID", "N° Petición", "Validada", "Fecha"],
+    "Pizarra_Urgentes": ["ID", "N° Petición", "Validada", "Fecha"],
+    "Centros": ["Centro", "Estado", "Pdte Rev", "Pdte Val", "Rev Hasta", "Responsable"]
+  };
+  for (var name in expected) {
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) continue;
+    var currentHeaders = sheet.getRange(1, 1, 1, sheet.getMaxColumns()).getValues()[0].filter(function (h) { return h !== ""; });
+    var target = expected[name];
+    for (var i = 0; i < target.length; i++) {
+      if (currentHeaders.indexOf(target[i]) === -1) {
+        var nextCol = currentHeaders.length + 1;
+        sheet.getRange(1, nextCol).setValue(target[i]);
+        currentHeaders.push(target[i]);
+      }
+    }
+  }
+}
 
 function doGet(e) {
+  migrateHeaders();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   var getSheetData = function (name) {
