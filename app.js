@@ -75,6 +75,17 @@ function autoDetectarDia() {
 }
 
 function fechaHoy() { return new Date().toLocaleDateString("es-CL"); }
+function formatFecha(f) {
+  if (!f) return "";
+  // Already in dd-mm-yyyy or dd/mm/yyyy
+  if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/.test(f)) return f;
+  // Try parsing as Date
+  var d = new Date(f);
+  if (isNaN(d.getTime())) return f;
+  var dd = String(d.getDate()).padStart(2, '0');
+  var mm = String(d.getMonth() + 1).padStart(2, '0');
+  return dd + '-' + mm + '-' + d.getFullYear();
+}
 
 // ===================== FUZZY SEARCH =====================
 function initFuzzy(inputId, dropId) {
@@ -297,7 +308,7 @@ function renderMuestras() {
         const alm = m.Almacenada === "Sí" || m.Almacenada === "Si";
         const cls = alm ? "st-revisado" : "st-no-revisado";
         return `<tr class="row-hover" style="border-bottom:1px solid var(--border);">
-          <td class="px-2 py-1 text-[8px]" style="color:var(--text-dim);">${m.Fecha || ""}</td>
+          <td class="px-2 py-1 text-[8px]" style="color:var(--text-dim);">${formatFecha(m.Fecha)}</td>
           <td class="px-2 py-1 font-mono text-xs">${m["N° Petición"] || ""}</td>
           <td class="px-2 py-1"><span class="exam-pill">${m.Examen || ""}</span></td>
           <td class="px-2 py-1 text-center">
@@ -349,7 +360,7 @@ function renderValTable(tbId, items, toggleFn, delFn) {
   if (!sorted.length) { tb.innerHTML = `<tr><td colspan="4" class="px-2 py-2.5 text-center text-[9px] italic" style="color:var(--text-dim);">Sin registros</td></tr>`; return; }
   tb.innerHTML = sorted.map(c => {
     const v = c.Validada === "Sí" || c.Validada === "Si"; const cls = v ? "st-revisado" : "st-no-revisado";
-    return `<tr class="row-hover" style="border-bottom:1px solid var(--border);"><td class="px-2 py-1 text-[8px]" style="color:var(--text-dim);">${c.Fecha || ""}</td><td class="px-2 py-1 font-mono text-xs">${c["N° Petición"] || ""}</td><td class="px-2 py-1 text-center"><select onchange="${toggleFn}('${c.ID}',this.value)" class="${cls}" style="font-size:.6rem;font-weight:700;padding:.15rem .4rem;border-radius:9999px;cursor:pointer;background:transparent;"><option value="No" ${!v ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">❌ No</option><option value="Sí" ${v ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">✅ Sí</option></select></td><td class="px-1"><button onclick="${delFn}('${c.ID}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">✕</button></td></tr>`;
+    return `<tr class="row-hover" style="border-bottom:1px solid var(--border);"><td class="px-2 py-1 text-[8px]" style="color:var(--text-dim);">${formatFecha(c.Fecha)}</td><td class="px-2 py-1 font-mono text-xs">${c["N° Petición"] || ""}</td><td class="px-2 py-1 text-center"><select onchange="${toggleFn}('${c.ID}',this.value)" class="${cls}" style="font-size:.6rem;font-weight:700;padding:.15rem .4rem;border-radius:9999px;cursor:pointer;background:transparent;"><option value="No" ${!v ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">❌ No</option><option value="Sí" ${v ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">✅ Sí</option></select></td><td class="px-1"><button onclick="${delFn}('${c.ID}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">✕</button></td></tr>`;
   }).join("");
 }
 
