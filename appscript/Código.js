@@ -258,131 +258,180 @@ function procesarCierreSemana() {
 
   if (data.length <= 1) return "No hay datos semanales.";
 
-  // --- Generar CSV ---
-  var csv = "\uFEFF";
-  for (var i = 0; i < data.length; i++) {
-    var row = data[i].map(function (item) {
-      var str = typeof item === 'string' ? item.replace(/"/g, '""') : String(item);
-      if (str.indexOf(',') > -1 || str.indexOf('\n') > -1 || str.indexOf('"') > -1) str = '"' + str + '"';
-      return str;
-    });
-    csv += row.join(",") + "\n";
-  }
-
   // --- Calcular Estadísticas ---
   var headers = data[0];
   var colAccion = headers.indexOf("Acción");
   var colExamen = headers.indexOf("Examen");
   var colUsuario = headers.indexOf("Usuario");
-  var colDia = headers.indexOf("Día");
 
   var totalErrores = data.length - 1;
   var totalAgregados = 0, totalEliminados = 0;
-  var userCount = {}, examCount = {};
-  var diasSet = {};
+  var userCount = {}, exAgCount = {}, exElCount = {};
 
   for (var i = 1; i < data.length; i++) {
     var accion = data[i][colAccion] ? data[i][colAccion].toString() : "";
     var examen = data[i][colExamen] ? data[i][colExamen].toString() : "";
     var usuario = data[i][colUsuario] ? data[i][colUsuario].toString() : "";
-    var dia = data[i][colDia] ? data[i][colDia].toString() : "";
 
-    if (accion === "AGREGADO") totalAgregados++;
-    if (accion === "ELIMINADO") totalEliminados++;
+    if (accion === "AGREGADO") { totalAgregados++; if (examen) exAgCount[examen] = (exAgCount[examen] || 0) + 1; }
+    if (accion === "ELIMINADO") { totalEliminados++; if (examen) exElCount[examen] = (exElCount[examen] || 0) + 1; }
     if (usuario) userCount[usuario] = (userCount[usuario] || 0) + 1;
-    if (examen) examCount[examen] = (examCount[examen] || 0) + 1;
-    if (dia) diasSet[dia] = true;
   }
 
-  var diasConErrores = Object.keys(diasSet).length;
-
-  // Top 8 usuarios
+  // Top 15 usuarios
   var topUsers = [];
   for (var u in userCount) topUsers.push({ name: u, count: userCount[u] });
   topUsers.sort(function (a, b) { return b.count - a.count; });
-  topUsers = topUsers.slice(0, 8);
+  topUsers = topUsers.slice(0, 15);
 
-  // Top 8 exámenes
-  var topExams = [];
-  for (var e in examCount) topExams.push({ name: e, count: examCount[e] });
-  topExams.sort(function (a, b) { return b.count - a.count; });
-  topExams = topExams.slice(0, 8);
+  // Top 15 exámenes agregados
+  var topExAg = [];
+  for (var e in exAgCount) topExAg.push({ name: e, count: exAgCount[e] });
+  topExAg.sort(function (a, b) { return b.count - a.count; });
+  topExAg = topExAg.slice(0, 15);
+
+  // Top 15 exámenes eliminados
+  var topExEl = [];
+  for (var e2 in exElCount) topExEl.push({ name: e2, count: exElCount[e2] });
+  topExEl.sort(function (a, b) { return b.count - a.count; });
+  topExEl = topExEl.slice(0, 15);
+
+  // --- Generar XLSX con 2 pestañas ---
+  var fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  var tempSS = SpreadsheetApp.create("LabControl_Reporte_" + fecha);
+
+  // Pestaña 1: Errores (datos crudos)
+  var sheetErr = tempSS.getSheets()[0];
+  sheetErr.setName("Errores");
+  sheetErr.getRange(1, 1, data.length, data[0].length).setValues(data);
+  // Formato header
+  sheetErr.getRange(1, 1, 1, data[0].length).setFontWeight("bold").setBackground("#eef2ff");
+
+  // Pestaña 2: Estadísticas
+  var sheetStats = tempSS.insertSheet("Estadísticas");
+  var statsData = [];
+  statsData.push(["RESUMEN SEMANAL - " + fecha]);
+  statsData.push([""]);
+  statsData.push(["Total Errores", totalErrores]);
+  statsData.push(["Agregados", totalAgregados]);
+  statsData.push(["Eliminados", totalEliminados]);
+  statsData.push([""]);
+  statsData.push(["TOP USUARIOS CON MÁS ERRORES"]);
+  statsData.push(["Usuario", "Cantidad"]);
+  for (var ui = 0; ui < topUsers.length; ui++) {
+    statsData.push([topUsers[ui].name, topUsers[ui].count]);
+  }
+  statsData.push([""]);
+  statsData.push(["TOP EXÁMENES AGREGADOS"]);
+  statsData.push(["Examen", "Cantidad"]);
+  for (var ai = 0; ai < topExAg.length; ai++) {
+    statsData.push([topExAg[ai].name, topExAg[ai].count]);
+  }
+  statsData.push([""]);
+  statsData.push(["TOP EXÁMENES ELIMINADOS"]);
+  statsData.push(["Examen", "Cantidad"]);
+  for (var ei = 0; ei < topExEl.length; ei++) {
+    statsData.push([topExEl[ei].name, topExEl[ei].count]);
+  }
+  sheetStats.getRange(1, 1, statsData.length, 2).setValues(statsData);
+  // Formato
+  sheetStats.getRange(1, 1, 1, 2).setFontWeight("bold").setFontSize(14);
+  sheetStats.getRange(3, 1, 3, 1).setFontWeight("bold");
+  sheetStats.setColumnWidth(1, 350);
+  sheetStats.setColumnWidth(2, 100);
+
+  SpreadsheetApp.flush();
+
+  // Exportar como XLSX
+  var xlsxUrl = "https://docs.google.com/spreadsheets/d/" + tempSS.getId() + "/export?format=xlsx";
+  var token = ScriptApp.getOAuthToken();
+  var xlsxBlob = UrlFetchApp.fetch(xlsxUrl, {
+    headers: { "Authorization": "Bearer " + token }
+  }).getBlob().setName("LabControl_" + fecha + ".xlsx");
+
+  // Eliminar spreadsheet temporal
+  DriveApp.getFileById(tempSS.getId()).setTrashed(true);
 
   // --- Construir HTML del correo ---
   var maxU = topUsers.length > 0 ? topUsers[0].count : 1;
-  var maxE = topExams.length > 0 ? topExams[0].count : 1;
+  var maxEAg = topExAg.length > 0 ? topExAg[0].count : 1;
+  var maxEEl = topExEl.length > 0 ? topExEl[0].count : 1;
 
   var usersHtml = topUsers.map(function (u) {
     var pct = Math.round(u.count / maxU * 100);
     return '<tr><td style="padding:4px 8px;font-weight:600;font-size:13px;">' + u.name + '</td>' +
-      '<td style="padding:4px 8px;width:60%;"><div style="background:#fee2e2;border-radius:8px;overflow:hidden;height:18px;">' +
+      '<td style="padding:4px 8px;width:55%;"><div style="background:#fee2e2;border-radius:8px;overflow:hidden;height:18px;">' +
       '<div style="background:linear-gradient(90deg,#ef4444,#f97316);height:18px;width:' + pct + '%;border-radius:8px;"></div></div></td>' +
       '<td style="padding:4px 8px;text-align:right;font-weight:700;color:#ef4444;font-size:14px;">' + u.count + '</td></tr>';
   }).join("");
 
-  var examsHtml = topExams.map(function (e) {
-    var pct = Math.round(e.count / maxE * 100);
-    return '<tr><td style="padding:4px 8px;font-weight:600;font-size:13px;">' + e.name + '</td>' +
-      '<td style="padding:4px 8px;width:60%;"><div style="background:#e0e7ff;border-radius:8px;overflow:hidden;height:18px;">' +
-      '<div style="background:linear-gradient(90deg,#6366f1,#8b5cf6);height:18px;width:' + pct + '%;border-radius:8px;"></div></div></td>' +
-      '<td style="padding:4px 8px;text-align:right;font-weight:700;color:#6366f1;font-size:14px;">' + e.count + '</td></tr>';
+  var exAgHtml = topExAg.map(function (e) {
+    var pct = Math.round(e.count / maxEAg * 100);
+    return '<tr><td style="padding:3px 8px;font-size:11px;font-weight:600;">' + e.name + '</td>' +
+      '<td style="padding:3px 8px;width:40%;"><div style="background:#d1fae5;border-radius:8px;overflow:hidden;height:14px;">' +
+      '<div style="background:linear-gradient(90deg,#22c55e,#10b981);height:14px;width:' + pct + '%;border-radius:8px;"></div></div></td>' +
+      '<td style="padding:3px 8px;text-align:right;font-weight:700;color:#10b981;font-size:12px;">' + e.count + '</td></tr>';
   }).join("");
 
-  var fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  var exElHtml = topExEl.map(function (e) {
+    var pct = Math.round(e.count / maxEEl * 100);
+    return '<tr><td style="padding:3px 8px;font-size:11px;font-weight:600;">' + e.name + '</td>' +
+      '<td style="padding:3px 8px;width:40%;"><div style="background:#fee2e2;border-radius:8px;overflow:hidden;height:14px;">' +
+      '<div style="background:linear-gradient(90deg,#ef4444,#dc2626);height:14px;width:' + pct + '%;border-radius:8px;"></div></div></td>' +
+      '<td style="padding:3px 8px;text-align:right;font-weight:700;color:#ef4444;font-size:12px;">' + e.count + '</td></tr>';
+  }).join("");
 
-  var htmlBody = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f8fafc;padding:20px;border-radius:12px;">' +
+  var htmlBody = '<div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f8fafc;padding:20px;border-radius:12px;">' +
     '<div style="text-align:center;margin-bottom:16px;">' +
     '<h1 style="color:#4f46e5;margin:0;font-size:22px;">📊 Reporte Semanal LabControl</h1>' +
     '<p style="color:#64748b;margin:4px 0 0;font-size:13px;">' + fecha + '</p></div>' +
 
-    '<div style="display:flex;gap:8px;margin-bottom:16px;text-align:center;">' +
     '<table width="100%" cellpadding="0" cellspacing="8"><tr>' +
     '<td style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#6366f1;">' + totalErrores + '</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Total</div></td>' +
     '<td style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#10b981;">' + totalAgregados + '</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Agregados</div></td>' +
     '<td style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#ef4444;">' + totalEliminados + '</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Eliminados</div></td>' +
-    '<td style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:12px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#f59e0b;">' + diasConErrores + '</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Días</div></td>' +
-    '</tr></table></div>' +
+    '</tr></table>' +
 
-    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px;">' +
-    '<h3 style="margin:0 0 8px;font-size:14px;color:#ef4444;">🔝 Top Usuarios con más Errores</h3>' +
-    (topUsers.length > 0 ? '<table width="100%" cellpadding="0" cellspacing="0">' + usersHtml + '</table>' : '<p style="color:#94a3b8;font-size:12px;">Sin datos</p>') + '</div>' +
+    '<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-top:12px;">' +
+    '<h3 style="margin:0 0 8px;font-size:14px;color:#1e293b;">👤 Top Usuarios con más Errores</h3>' +
+    '<table width="100%" cellpadding="0" cellspacing="0">' + usersHtml + '</table></div>' +
 
-    '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px;">' +
-    '<h3 style="margin:0 0 8px;font-size:14px;color:#6366f1;">🔬 Top Exámenes más Frecuentes</h3>' +
-    (topExams.length > 0 ? '<table width="100%" cellpadding="0" cellspacing="0">' + examsHtml + '</table>' : '<p style="color:#94a3b8;font-size:12px;">Sin datos</p>') + '</div>' +
+    '<table width="100%" cellpadding="0" cellspacing="8" style="margin-top:4px;"><tr>' +
+    '<td valign="top" width="50%" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">' +
+    '<h3 style="margin:0 0 8px;font-size:13px;color:#10b981;">✅ Top Exámenes Agregados</h3>' +
+    '<table width="100%" cellpadding="0" cellspacing="0">' + exAgHtml + '</table></td>' +
+    '<td valign="top" width="50%" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:14px;">' +
+    '<h3 style="margin:0 0 8px;font-size:13px;color:#ef4444;">❌ Top Exámenes Eliminados</h3>' +
+    '<table width="100%" cellpadding="0" cellspacing="0">' + exElHtml + '</table></td>' +
+    '</tr></table>' +
 
-    '<p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:16px;">Generado por LabControl · Adjunto CSV con datos completos</p>' +
+    '<div style="text-align:center;margin-top:16px;padding:10px;background:#eef2ff;border-radius:8px;">' +
+    '<p style="margin:0;font-size:11px;color:#64748b;">📎 Archivo XLSX adjunto con datos completos + estadísticas</p></div>' +
     '</div>';
 
-  var blob = Utilities.newBlob(csv, "text/csv", "Reporte_Errores_" + fecha + ".csv");
-
+  // --- Enviar correo ---
   try {
     MailApp.sendEmail({
       to: "grivera@hospitaldetalca.cl",
       subject: "📊 Reporte Semanal LabControl - " + fecha + " (" + totalErrores + " errores)",
-      body: "Reporte semanal: " + totalErrores + " errores (" + totalAgregados + " agregados, " + totalEliminados + " eliminados). Top usuario: " + (topUsers.length > 0 ? topUsers[0].name + " (" + topUsers[0].count + ")" : "N/A") + ". Ver HTML para dashboard completo.",
+      body: "Reporte semanal: " + totalErrores + " errores (" + totalAgregados + " agregados, " + totalEliminados + " eliminados). Ver HTML para dashboard completo.",
       htmlBody: htmlBody,
-      attachments: [blob]
+      attachments: [xlsxBlob]
     });
   } catch (e) {
     throw new Error("Error correo: " + e.toString());
   }
 
+  // --- Backup ---
   var backup = ss.insertSheet("Backup_" + fecha);
   backup.getRange(1, 1, data.length, data[0].length).setValues(data);
 
+  // --- Limpiar SOLO Errores (NO Pizarra) ---
   if (sheetErrores.getMaxRows() > 1) {
     sheetErrores.getRange(2, 1, sheetErrores.getMaxRows() - 1, sheetErrores.getMaxColumns()).clearContent();
   }
 
-  var pizarras = ["Pizarra_Curvas", "Pizarra_Urgentes", "Pizarra_Custom"];
-  for (var p = 0; p < pizarras.length; p++) {
-    var s = ss.getSheetByName(pizarras[p]);
-    if (s && s.getMaxRows() > 1) {
-      s.getRange(2, 1, s.getMaxRows() - 1, s.getMaxColumns()).clearContent();
-    }
-  }
-
+  // --- Reiniciar Centros ---
   var centrosSheet = ss.getSheetByName("Centros");
   if (centrosSheet) {
     var cd = centrosSheet.getDataRange().getValues();
@@ -391,5 +440,13 @@ function procesarCierreSemana() {
     }
   }
 
-  return "Semana cerrada, correo enviado con estadísticas.";
+  return "Semana cerrada, correo enviado con XLSX y estadísticas.";
 }
+
+
+
+
+
+
+
+
