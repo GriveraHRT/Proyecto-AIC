@@ -342,15 +342,22 @@ function procesarCierreSemana() {
 
   SpreadsheetApp.flush();
 
-  // Exportar como XLSX
-  var xlsxUrl = "https://docs.google.com/spreadsheets/d/" + tempSS.getId() + "/export?format=xlsx";
-  var token = ScriptApp.getOAuthToken();
-  var xlsxBlob = UrlFetchApp.fetch(xlsxUrl, {
-    headers: { "Authorization": "Bearer " + token }
-  }).getBlob().setName("LabControl_" + fecha + ".xlsx");
+  // Compartir el spreadsheet (cualquiera con el enlace puede ver)
+  var reportFile = DriveApp.getFileById(tempSS.getId());
+  reportFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  var reportUrl = tempSS.getUrl();
 
-  // Eliminar spreadsheet temporal
-  DriveApp.getFileById(tempSS.getId()).setTrashed(true);
+  // Generar CSV como adjunto de respaldo
+  var csv = "\uFEFF";
+  for (var ci = 0; ci < data.length; ci++) {
+    var row = data[ci].map(function (item) {
+      var str = typeof item === 'string' ? item.replace(/"/g, '""') : String(item);
+      if (str.indexOf(',') > -1 || str.indexOf('\n') > -1 || str.indexOf('"') > -1) str = '"' + str + '"';
+      return str;
+    });
+    csv += row.join(",") + "\n";
+  }
+  var csvBlob = Utilities.newBlob(csv, "text/csv", "LabControl_Errores_" + fecha + ".csv");
 
   // --- Construir HTML del correo ---
   var maxU = topUsers.length > 0 ? topUsers[0].count : 1;
@@ -405,8 +412,10 @@ function procesarCierreSemana() {
     '<table width="100%" cellpadding="0" cellspacing="0">' + exElHtml + '</table></td>' +
     '</tr></table>' +
 
-    '<div style="text-align:center;margin-top:16px;padding:10px;background:#eef2ff;border-radius:8px;">' +
-    '<p style="margin:0;font-size:11px;color:#64748b;">📎 Archivo XLSX adjunto con datos completos + estadísticas</p></div>' +
+    '<div style="text-align:center;margin-top:16px;padding:12px;background:#eef2ff;border-radius:8px;">' +
+    '<p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#4f46e5;">📊 Reporte completo con 2 pestañas (Errores + Estadísticas):</p>' +
+    '<a href="' + reportUrl + '" style="display:inline-block;background:#4f46e5;color:white;padding:8px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Abrir Google Sheet</a>' +
+    '<p style="margin:6px 0 0;font-size:10px;color:#64748b;">También se adjunta CSV con los datos de errores</p></div>' +
     '</div>';
 
   // --- Enviar correo ---
@@ -414,9 +423,9 @@ function procesarCierreSemana() {
     MailApp.sendEmail({
       to: "grivera@hospitaldetalca.cl",
       subject: "📊 Reporte Semanal LabControl - " + fecha + " (" + totalErrores + " errores)",
-      body: "Reporte semanal: " + totalErrores + " errores (" + totalAgregados + " agregados, " + totalEliminados + " eliminados). Ver HTML para dashboard completo.",
+      body: "Reporte semanal: " + totalErrores + " errores (" + totalAgregados + " agregados, " + totalEliminados + " eliminados). Reporte: " + reportUrl,
       htmlBody: htmlBody,
-      attachments: [xlsxBlob]
+      attachments: [csvBlob]
     });
   } catch (e) {
     throw new Error("Error correo: " + e.toString());
@@ -425,6 +434,7 @@ function procesarCierreSemana() {
   // --- Backup ---
   var backup = ss.insertSheet("Backup_" + fecha);
   backup.getRange(1, 1, data.length, data[0].length).setValues(data);
+
 
   // --- Limpiar SOLO Errores (NO Pizarra) ---
   if (sheetErrores.getMaxRows() > 1) {
