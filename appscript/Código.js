@@ -310,25 +310,25 @@ function procesarCierreSemana() {
   // Pestaña 2: Estadísticas
   var sheetStats = tempSS.insertSheet("Estadísticas");
   var statsData = [];
-  statsData.push(["RESUMEN SEMANAL - " + fecha]);
-  statsData.push([""]);
+  statsData.push(["RESUMEN SEMANAL - " + fecha, ""]);
+  statsData.push(["", ""]);
   statsData.push(["Total Errores", totalErrores]);
   statsData.push(["Agregados", totalAgregados]);
   statsData.push(["Eliminados", totalEliminados]);
-  statsData.push([""]);
-  statsData.push(["TOP USUARIOS CON MÁS ERRORES"]);
+  statsData.push(["", ""]);
+  statsData.push(["TOP USUARIOS CON MÁS ERRORES", ""]);
   statsData.push(["Usuario", "Cantidad"]);
   for (var ui = 0; ui < topUsers.length; ui++) {
     statsData.push([topUsers[ui].name, topUsers[ui].count]);
   }
-  statsData.push([""]);
-  statsData.push(["TOP EXÁMENES AGREGADOS"]);
+  statsData.push(["", ""]);
+  statsData.push(["TOP EXÁMENES AGREGADOS", ""]);
   statsData.push(["Examen", "Cantidad"]);
   for (var ai = 0; ai < topExAg.length; ai++) {
     statsData.push([topExAg[ai].name, topExAg[ai].count]);
   }
-  statsData.push([""]);
-  statsData.push(["TOP EXÁMENES ELIMINADOS"]);
+  statsData.push(["", ""]);
+  statsData.push(["TOP EXÁMENES ELIMINADOS", ""]);
   statsData.push(["Examen", "Cantidad"]);
   for (var ei = 0; ei < topExEl.length; ei++) {
     statsData.push([topExEl[ei].name, topExEl[ei].count]);
