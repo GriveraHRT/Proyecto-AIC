@@ -42,7 +42,8 @@ function setup() {
       ["Rio Claro", "NO REVISADO :(", "", "", "", ""],
       ["Pencahue", "NO REVISADO :(", "", "", "", ""],
       ["Pelarco", "NO REVISADO :(", "", "", "", ""],
-      ["TOMA DE MUESTRA", "NO REVISADO :(", "", "", "", ""]
+      ["TOMA DE MUESTRA", "NO REVISADO :(", "", "", "", ""],
+      ["Laboratorio", "NO REVISADO :(", "", "", "", ""]
     ];
     centrosSheet.getRange(2, 1, centros.length, 6).setValues(centros);
   }
@@ -296,68 +297,51 @@ function procesarCierreSemana() {
   topExEl.sort(function (a, b) { return b.count - a.count; });
   topExEl = topExEl.slice(0, 15);
 
-  // --- Generar XLSX con 2 pestañas ---
   var fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
-  var tempSS = SpreadsheetApp.create("LabControl_Reporte_" + fecha);
 
-  // Pestaña 1: Errores (datos crudos)
-  var sheetErr = tempSS.getSheets()[0];
-  sheetErr.setName("Errores");
-  sheetErr.getRange(1, 1, data.length, data[0].length).setValues(data);
-  // Formato header
-  sheetErr.getRange(1, 1, 1, data[0].length).setFontWeight("bold").setBackground("#eef2ff");
-
-  // Pestaña 2: Estadísticas
-  var sheetStats = tempSS.insertSheet("Estadísticas");
-  var statsData = [];
-  statsData.push(["RESUMEN SEMANAL - " + fecha, ""]);
-  statsData.push(["", ""]);
-  statsData.push(["Total Errores", totalErrores]);
-  statsData.push(["Agregados", totalAgregados]);
-  statsData.push(["Eliminados", totalEliminados]);
-  statsData.push(["", ""]);
-  statsData.push(["TOP USUARIOS CON MÁS ERRORES", ""]);
-  statsData.push(["Usuario", "Cantidad"]);
-  for (var ui = 0; ui < topUsers.length; ui++) {
-    statsData.push([topUsers[ui].name, topUsers[ui].count]);
-  }
-  statsData.push(["", ""]);
-  statsData.push(["TOP EXÁMENES AGREGADOS", ""]);
-  statsData.push(["Examen", "Cantidad"]);
-  for (var ai = 0; ai < topExAg.length; ai++) {
-    statsData.push([topExAg[ai].name, topExAg[ai].count]);
-  }
-  statsData.push(["", ""]);
-  statsData.push(["TOP EXÁMENES ELIMINADOS", ""]);
-  statsData.push(["Examen", "Cantidad"]);
-  for (var ei = 0; ei < topExEl.length; ei++) {
-    statsData.push([topExEl[ei].name, topExEl[ei].count]);
-  }
-  sheetStats.getRange(1, 1, statsData.length, 2).setValues(statsData);
-  // Formato
-  sheetStats.getRange(1, 1, 1, 2).setFontWeight("bold").setFontSize(14);
-  sheetStats.getRange(3, 1, 3, 1).setFontWeight("bold");
-  sheetStats.setColumnWidth(1, 350);
-  sheetStats.setColumnWidth(2, 100);
-
-  SpreadsheetApp.flush();
-
-  // Compartir el spreadsheet (cualquiera con el enlace puede ver)
-  var reportFile = DriveApp.getFileById(tempSS.getId());
-  reportFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  var reportUrl = tempSS.getUrl();
-
-  // Generar CSV como adjunto de respaldo
-  var csv = "\uFEFF";
+  // --- Generar CSV de Errores (en memoria, sin DriveApp) ---
+  var csvErrores = "\uFEFF";
   for (var ci = 0; ci < data.length; ci++) {
-    var row = data[ci].map(function (item) {
-      var str = typeof item === 'string' ? item.replace(/"/g, '""') : String(item);
-      if (str.indexOf(',') > -1 || str.indexOf('\n') > -1 || str.indexOf('"') > -1) str = '"' + str + '"';
-      return str;
+    var row = data[ci].map(function (cell) {
+      var s = (cell instanceof Date) ? Utilities.formatDate(cell, Session.getScriptTimeZone(), "dd-MM-yyyy HH:mm") : String(cell).replace(/"/g, '""');
+      return (s.indexOf(',') > -1 || s.indexOf('\n') > -1 || s.indexOf('"') > -1) ? '"' + s + '"' : s;
     });
-    csv += row.join(",") + "\n";
+    csvErrores += row.join(",") + "\n";
   }
-  var csvBlob = Utilities.newBlob(csv, "text/csv", "LabControl_Errores_" + fecha + ".csv");
+
+  // --- Generar CSV de Estadísticas (en memoria) ---
+  var csvStats = "\uFEFF";
+  var statsRows = [
+    ["RESUMEN SEMANAL", fecha],
+    ["", ""],
+    ["Total Errores", totalErrores],
+    ["Agregados", totalAgregados],
+    ["Eliminados", totalEliminados],
+    ["", ""],
+    ["TOP USUARIOS CON MÁS ERRORES", ""],
+    ["Usuario", "Cantidad"]
+  ];
+  for (var ui2 = 0; ui2 < topUsers.length; ui2++) {
+    statsRows.push([topUsers[ui2].name, topUsers[ui2].count]);
+  }
+  statsRows.push(["", ""]);
+  statsRows.push(["TOP EXÁMENES AGREGADOS", ""]);
+  statsRows.push(["Examen", "Cantidad"]);
+  for (var ai2 = 0; ai2 < topExAg.length; ai2++) {
+    statsRows.push([topExAg[ai2].name, topExAg[ai2].count]);
+  }
+  statsRows.push(["", ""]);
+  statsRows.push(["TOP EXÁMENES ELIMINADOS", ""]);
+  statsRows.push(["Examen", "Cantidad"]);
+  for (var ei2 = 0; ei2 < topExEl.length; ei2++) {
+    statsRows.push([topExEl[ei2].name, topExEl[ei2].count]);
+  }
+  for (var si = 0; si < statsRows.length; si++) {
+    csvStats += statsRows[si].join(",") + "\n";
+  }
+
+  var blobErrores = Utilities.newBlob(csvErrores, "text/csv", "LabControl_Errores_" + fecha + ".csv");
+  var blobStats = Utilities.newBlob(csvStats, "text/csv", "LabControl_Estadisticas_" + fecha + ".csv");
 
   // --- Construir HTML del correo ---
   var maxU = topUsers.length > 0 ? topUsers[0].count : 1;
@@ -413,27 +397,39 @@ function procesarCierreSemana() {
     '</tr></table>' +
 
     '<div style="text-align:center;margin-top:16px;padding:12px;background:#eef2ff;border-radius:8px;">' +
-    '<p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#4f46e5;">📊 Reporte completo con 2 pestañas (Errores + Estadísticas):</p>' +
-    '<a href="' + reportUrl + '" style="display:inline-block;background:#4f46e5;color:white;padding:8px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Abrir Google Sheet</a>' +
-    '<p style="margin:6px 0 0;font-size:10px;color:#64748b;">También se adjunta CSV con los datos de errores</p></div>' +
+    '<p style="margin:0;font-size:11px;color:#64748b;">📎 Se adjuntan 2 archivos CSV: Errores + Estadísticas</p></div>' +
     '</div>';
+
+  // --- Construir saludo para el cuerpo del correo ---
+  var saludoHtml = '<div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto 16px;padding:0 20px;">' +
+    '<p style="color:#1e293b;font-size:14px;line-height:1.6;margin:0 0 8px;">Estimadas/os:</p>' +
+    '<p style="color:#1e293b;font-size:14px;line-height:1.6;margin:0 0 16px;">Esperando que se encuentren bien, les comparto el reporte de errores semanales registrados por AIC durante la semana pasada.</p>' +
+    '<p style="color:#1e293b;font-size:14px;line-height:1.6;margin:0 0 4px;">Saludos cordiales.</p>' +
+    '<br>' +
+    '<p style="color:#94a3b8;font-size:12px;font-style:italic;margin:0;">(Correo generado automáticamente)</p>' +
+    '</div>';
+
+  var htmlBodyCompleto = saludoHtml + htmlBody;
 
   // --- Enviar correo ---
   try {
     MailApp.sendEmail({
-      to: "grivera@hospitaldetalca.cl",
+      to: "grivera@hospitaldetalca.cl;cdiazp@hospitaldetalca.cl;agarridom@hospitaldetalca.cl;jsmartin@hospitaldetalca.cl",
+      cc: "ahormazabal@hospitaldetalca.cl;dcalderon@hospitaldetalca.cl",
+      bcc: "cgonzalezmu@hospitaldetalca.cl",
       subject: "📊 Reporte Semanal LabControl - " + fecha + " (" + totalErrores + " errores)",
-      body: "Reporte semanal: " + totalErrores + " errores (" + totalAgregados + " agregados, " + totalEliminados + " eliminados). Reporte: " + reportUrl,
-      htmlBody: htmlBody,
-      attachments: [csvBlob]
+      body: "Estimadas/os:\n\nEsperando que se encuentren bien, les comparto el reporte de errores semanales registrados por AIC durante la semana pasada.\n\nSaludos cordiales.\n\n(Correo generado automáticamente)",
+      htmlBody: htmlBodyCompleto,
+      attachments: [blobErrores, blobStats]
     });
   } catch (e) {
     throw new Error("Error correo: " + e.toString());
   }
 
-  // --- Backup ---
+  // --- Backup en hoja dentro del mismo spreadsheet ---
   var backup = ss.insertSheet("Backup_" + fecha);
   backup.getRange(1, 1, data.length, data[0].length).setValues(data);
+
 
 
   // --- Limpiar SOLO Errores (NO Pizarra) ---

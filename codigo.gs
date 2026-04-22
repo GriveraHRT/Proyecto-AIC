@@ -42,7 +42,8 @@ function setup() {
       ["Rio Claro", "NO REVISADO :(", "", "", "", ""],
       ["Pencahue", "NO REVISADO :(", "", "", "", ""],
       ["Pelarco", "NO REVISADO :(", "", "", "", ""],
-      ["TOMA DE MUESTRA", "NO REVISADO :(", "", "", "", ""]
+      ["TOMA DE MUESTRA", "NO REVISADO :(", "", "", "", ""],
+      ["Laboratorio", "NO REVISADO :(", "", "", "", ""]
     ];
     centrosSheet.getRange(2, 1, centros.length, 6).setValues(centros);
   }
@@ -418,13 +419,26 @@ function procesarCierreSemana() {
     '<p style="margin:6px 0 0;font-size:10px;color:#64748b;">También se adjunta CSV con los datos de errores</p></div>' +
     '</div>';
 
+  // --- Construir saludo para el cuerpo del correo ---
+  var saludoHtml = '<div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto 16px;padding:0 20px;">' +
+    '<p style="color:#1e293b;font-size:14px;line-height:1.6;margin:0 0 8px;">Estimadas/os:</p>' +
+    '<p style="color:#1e293b;font-size:14px;line-height:1.6;margin:0 0 16px;">Esperando que se encuentren bien, les comparto el reporte de errores semanales registrados por AIC durante la semana pasada.</p>' +
+    '<p style="color:#1e293b;font-size:14px;line-height:1.6;margin:0 0 4px;">Saludos cordiales.</p>' +
+    '<br>' +
+    '<p style="color:#94a3b8;font-size:12px;font-style:italic;margin:0;">(Correo generado automáticamente)</p>' +
+    '</div>';
+
+  var htmlBodyCompleto = saludoHtml + htmlBody;
+
   // --- Enviar correo ---
   try {
     MailApp.sendEmail({
-      to: "grivera@hospitaldetalca.cl",
+      to: "grivera@hospitaldetalca.cl;cdiazp@hospitaldetalca.cl;agarridom@hospitaldetalca.cl;jsmartin@hospitaldetalca.cl",
+      cc: "ahormazabal@hospitaldetalca.cl;dcalderon@hospitaldetalca.cl",
+      bcc: "cgonzalezmu@hospitaldetalca.cl",
       subject: "📊 Reporte Semanal LabControl - " + fecha + " (" + totalErrores + " errores)",
-      body: "Reporte semanal: " + totalErrores + " errores (" + totalAgregados + " agregados, " + totalEliminados + " eliminados). Reporte: " + reportUrl,
-      htmlBody: htmlBody,
+      body: "Estimadas/os:\n\nEsperando que se encuentren bien, les comparto el reporte de errores semanales registrados por AIC durante la semana pasada.\n\nSaludos cordiales.\n\n(Correo generado automáticamente)",
+      htmlBody: htmlBodyCompleto,
       attachments: [csvBlob]
     });
   } catch (e) {
