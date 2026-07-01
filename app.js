@@ -34,10 +34,34 @@ document.addEventListener("DOMContentLoaded", () => {
   autoDetectarDia();
   initFuzzy("fuzzyAgregar", "dropAgregar");
   initFuzzy("fuzzyEliminar", "dropEliminar");
+  setupInputValidations();
   cargarDatos(true);
   iniciarPolling();
   iniciarAlertas();
 });
+
+function setupInputValidations() {
+  const numericIds = ["errPeticion", "muestraPeticion", "curvaPeticion", "urgentePeticion"];
+  numericIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("input", (e) => {
+        e.target.value = e.target.value.replace(/[^0-9]/g, "");
+      });
+    }
+  });
+
+  const letterIds = ["errUsuario"];
+  letterIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("input", (e) => {
+        // Permitir letras, espacios y caracteres acentuados españoles (á, é, í, ó, ú, ü, ñ)
+        e.target.value = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\s]/g, "");
+      });
+    }
+  });
+}
 
 // ===================== THEME =====================
 function toggleTheme() {
@@ -210,7 +234,29 @@ async function apiPostBlock(payload) {
 }
 
 // ===================== POLLING =====================
-function iniciarPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = setInterval(() => cargarDatos(false), POLL_INTERVAL_MS); }
+let tabVisible = true;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    tabVisible = false;
+    detenerPolling();
+  } else {
+    tabVisible = true;
+    cargarDatos(false);
+    iniciarPolling();
+  }
+});
+function iniciarPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  if (tabVisible) {
+    pollTimer = setInterval(() => cargarDatos(false), POLL_INTERVAL_MS);
+  }
+}
+function detenerPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
 async function cargarDatos(loader) {
   if (loader) showLoading("Cargando...");
   const d = await apiGet();
@@ -220,8 +266,12 @@ async function cargarDatos(loader) {
 function setSyncStatus(s) { const d = document.getElementById("syncDot"), l = document.getElementById("syncLabel"); if (s === "ok") { d.style.background = "#22c55e"; d.style.animation = "pulse 2s infinite"; l.textContent = "Sincronizado"; } else { d.style.background = "#ef4444"; d.style.animation = "none"; l.textContent = "Sin conexión"; } }
 
 function getExamenes() { return (datos.maestro_examenes && datos.maestro_examenes.length > 0) ? datos.maestro_examenes : EXAMENES_DEFAULT; }
+let lastExamenesJson = "";
 function poblarMuestraExamenes() {
   const l = getExamenes();
+  const currentJson = JSON.stringify(l);
+  if (currentJson === lastExamenesJson) return;
+  lastExamenesJson = currentJson;
   const sel = document.getElementById("muestraExamen"); if (!sel) return;
   const cv = sel.value; while (sel.options.length > 1) sel.remove(1);
   l.forEach(e => { const o = document.createElement("option"); o.value = e; o.textContent = e; sel.appendChild(o); }); sel.value = cv;
@@ -364,12 +414,19 @@ function renderValTable(tbId, items, toggleFn, delFn) {
   }).join("");
 }
 
+const parsedDatesCache = new Map();
 function parseFecha(f) {
   if (!f) return 0;
-  // dd-mm-yyyy or dd/mm/yyyy
+  if (parsedDatesCache.has(f)) return parsedDatesCache.get(f);
   const parts = f.split(/[-\/]/);
-  if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-  return new Date(f).getTime() || 0;
+  let val;
+  if (parts.length === 3) {
+    val = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+  } else {
+    val = new Date(f).getTime() || 0;
+  }
+  parsedDatesCache.set(f, val);
+  return val;
 }
 
 // ===================== RECORDATORIOS =====================
@@ -385,7 +442,7 @@ function deleteCustomCuadrante(q) { if (!confirm("¿Eliminar '" + q + "'?")) ret
 function css(s) { return s.replace(/[^a-zA-Z0-9]/g, "_"); }
 function renderCustom() {
   const c = document.getElementById("customContainer"); const qs = [...new Set(datos.custom.map(c => c.Cuadrante))];
-  let h = qs.map(n => { const rows = datos.custom.filter(c => c.Cuadrante === n); const ci = css(n); return `<div class="glass-card p-3"><div class="flex items-center justify-between mb-1.5"><h3 class="text-xs font-bold">${esc(n)}</h3><button onclick="deleteCustomCuadrante('${escA(n)}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">🗑</button></div><div class="flex gap-1 mb-1.5"><input type="text" id="cp_${ci}" class="input-field text-xs" placeholder="Petición" style="width:35%;" /><input type="text" id="cd_${ci}" class="input-field text-xs" placeholder="Detalle" style="width:50%;" /><button class="btn btn-xs btn-primary" onclick="addCustomRow('${escA(n)}')">+</button></div><div class="space-y-0.5">${rows.filter(r => r["N° Petición"] || (r.Detalle && r.Detalle !== "(Creado)")).map(r => `<div class="flex items-center justify-between py-0.5 px-1.5 rounded text-[9px]" style="background:var(--bg-input);border:1px solid var(--border);"><div><span class="font-mono">${r["N° Petición"] || ""}</span>${r.Detalle && r.Detalle !== "(Creado)" ? ' <span style="color:var(--text-muted);">— ' + esc(r.Detalle) + '</span>' : ''}</div><button onclick="deleteCustomRow('${r.ID}')" style="color:var(--red-text);cursor:pointer;">✕</button></div>`).join("")}</div></div>`; }).join("");
+  let h = qs.map(n => { const rows = datos.custom.filter(c => c.Cuadrante === n); const ci = css(n); return `<div class="glass-card p-3"><div class="flex items-center justify-between mb-1.5"><h3 class="text-xs font-bold">${esc(n)}</h3><button onclick="deleteCustomCuadrante('${escA(n)}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">🗑</button></div><div class="flex gap-1 mb-1.5"><input type="text" id="cp_${ci}" class="input-field text-xs" placeholder="Petición" style="width:35%;" oninput="this.value=this.value.replace(/[^0-9]/g,'')" /><input type="text" id="cd_${ci}" class="input-field text-xs" placeholder="Detalle" style="width:50%;" /><button class="btn btn-xs btn-primary" onclick="addCustomRow('${escA(n)}')">+</button></div><div class="space-y-0.5">${rows.filter(r => r["N° Petición"] || (r.Detalle && r.Detalle !== "(Creado)")).map(r => `<div class="flex items-center justify-between py-0.5 px-1.5 rounded text-[9px]" style="background:var(--bg-input);border:1px solid var(--border);"><div><span class="font-mono">${r["N° Petición"] || ""}</span>${r.Detalle && r.Detalle !== "(Creado)" ? ' <span style="color:var(--text-muted);">— ' + esc(r.Detalle) + '</span>' : ''}</div><button onclick="deleteCustomRow('${r.ID}')" style="color:var(--red-text);cursor:pointer;">✕</button></div>`).join("")}</div></div>`; }).join("");
   h += `<div class="glass-card p-3 flex items-center justify-center border-2 border-dashed cursor-pointer hover:border-indigo-500 transition-colors" style="border-color:var(--border);" onclick="crearCuadrante()"><p class="text-xs" style="color:var(--text-dim);">+ Nuevo</p></div>`; c.innerHTML = h;
 }
 
@@ -424,17 +481,7 @@ function sendChat() {
   msgEl.value = ""; scrollChatBottom();
 }
 function renderChat() {
-  const c = document.getElementById("chatMessages"); if (!c) return;
-  const nickEl = document.getElementById("chatNickInput");
-  const nick = nickEl ? (nickEl.value || "").trim().toLowerCase() : "";
-  if (!datos.chat.length) { c.innerHTML = '<p class="text-center text-xs" style="color:var(--text-dim);padding:2rem;">Sin mensajes aún. ¡Sé el primero! 💬</p>'; return; }
-  c.innerHTML = datos.chat.map(m => {
-    const mine = m.Usuario.toLowerCase() === nick;
-    return `<div style="display:flex;flex-direction:column;align-items:${mine ? 'flex-end' : 'flex-start'};margin-bottom:.5rem;">
-    ${!mine ? `<div class="chat-sender">${esc(m.Usuario)}</div>` : ''}
-    <div class="chat-bubble ${mine ? 'chat-mine' : 'chat-other'}">${esc(m.Mensaje)}</div>
-    <div class="chat-time">${m.Fecha || ""}</div></div>`;
-  }).join("");
+  // Chat feature deprecated and disabled
 }
 function scrollChatBottom() { setTimeout(() => { const c = document.getElementById("chatMessages"); if (c) c.scrollTop = c.scrollHeight; }, 100); }
 

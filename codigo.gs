@@ -66,6 +66,7 @@ function setup() {
     var rows = examenes.sort().map(function (e) { return [e]; });
     maestroSheet.getRange(2, 1, rows.length, 1).setValues(rows);
   }
+  migrateHeaders();
 }
 /**
  * Auto-migrar headers: agrega columnas faltantes a hojas existentes
@@ -94,16 +95,13 @@ function migrateHeaders() {
 }
 
 function doGet(e) {
-  migrateHeaders();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   var getSheetData = function (name) {
     var sheet = ss.getSheetByName(name);
     if (!sheet) return [];
-    var lastRow = sheet.getLastRow();
-    var lastCol = sheet.getLastColumn();
-    if (lastRow <= 1 || lastCol === 0) return [];
-    var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
     var headers = data[0];
     var rows = [];
     for (var i = 1; i < data.length; i++) {
@@ -131,25 +129,6 @@ function doGet(e) {
     return list.sort();
   };
 
-  // Solo retornar los últimos 50 mensajes del chat
-  var getChatRecent = function () {
-    var sheet = ss.getSheetByName("Chat");
-    if (!sheet) return [];
-    var data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return [];
-    var headers = data[0];
-    var rows = [];
-    var start = Math.max(1, data.length - 50);
-    for (var i = start; i < data.length; i++) {
-      var obj = {};
-      for (var j = 0; j < headers.length; j++) {
-        obj[headers[j]] = data[i][j] ? data[i][j].toString() : "";
-      }
-      rows.push(obj);
-    }
-    return rows;
-  };
-
   var response = {
     errores: getSheetData("Errores"),
     muestras: getSheetData("Pizarra_Muestras"),
@@ -159,7 +138,7 @@ function doGet(e) {
     custom: getSheetData("Pizarra_Custom"),
     centros: getSheetData("Centros"),
     maestro_examenes: getMaestro(),
-    chat: getChatRecent()
+    chat: []
   };
 
   return ContentService.createTextOutput(JSON.stringify({ success: true, data: response }))
@@ -167,7 +146,6 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  migrateHeaders();
   var output = ContentService.createTextOutput();
   output.setMimeType(ContentService.MimeType.JSON);
   try {
