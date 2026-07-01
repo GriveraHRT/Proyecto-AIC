@@ -937,7 +937,18 @@
     <!-- ===== ESTADÍSTICAS ===== -->
     <section id="panel-stats" class="module-panel">
       <div class="glass-card p-5">
-        <h2 class="text-sm font-bold mb-4">📊 Estadísticas de Errores</h2>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <h2 class="text-sm font-bold flex items-center gap-2">📊 Estadísticas de Errores</h2>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px]" style="color:var(--text-muted);">Rango:</span>
+            <select id="statsRangeSelect" class="select-field text-xs py-1" style="width: auto;" onchange="changeStatsRange()">
+              <option value="actual">Semana Actual</option>
+              <option value="4semanas">Últimas 4 Semanas</option>
+              <option value="12semanas">Últimas 12 Semanas</option>
+              <option value="todo">Todo el Histórico</option>
+            </select>
+          </div>
+        </div>
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
           <div class="stat-card"
             style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:.75rem;">

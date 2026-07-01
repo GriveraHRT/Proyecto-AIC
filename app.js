@@ -26,6 +26,7 @@ let datos = { errores: [], muestras: [], curvas: [], urgentes: [], recordatorios
 let examenesAgregados = [], examenesEliminados = [];
 let confirmCallback = null, pollTimer = null, pendingSaves = 0;
 let alertTimerUrgentes = null, alertTimerMuestras = null;
+let cacheHistorico = {};
 
 // ===================== INIT =====================
 document.addEventListener("DOMContentLoaded", () => {
@@ -87,7 +88,14 @@ function switchTab(id) {
   document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
   document.getElementById("panel-" + id).classList.add("active");
   document.querySelector(`[data-tab="${id}"]`).classList.add("active");
-  if (id === "stats") renderStats();
+  if (id === "stats") {
+    const select = document.getElementById("statsRangeSelect");
+    if (select && select.value !== "actual") {
+      changeStatsRange();
+    } else {
+      renderStats();
+    }
+  }
   if (id === "chat") scrollChatBottom();
 }
 
@@ -261,7 +269,32 @@ async function cargarDatos(loader) {
   if (loader) showLoading("Cargando...");
   const d = await apiGet();
   if (loader) hideLoading();
-  if (d) { datos = d; poblarMuestraExamenes(); renderErrores(); renderMuestras(); renderCurvas(); renderUrgentes(); renderRecordatorios(); renderCustom(); renderCentros(); renderChat(); setSyncStatus("ok"); }
+  if (d) { 
+    datos = d; 
+    poblarMuestraExamenes(); 
+    renderErrores(); 
+    renderMuestras(); 
+    renderCurvas(); 
+    renderUrgentes(); 
+    renderRecordatorios(); 
+    renderCustom(); 
+    renderCentros(); 
+    renderChat(); 
+    setSyncStatus("ok"); 
+    
+    // Actualizar estadísticas según el rango seleccionado
+    const select = document.getElementById("statsRangeSelect");
+    if (select && select.value !== "actual") {
+      const cached = cacheHistorico[select.value];
+      if (cached) {
+        renderStats(datos.errores.concat(cached));
+      } else {
+        changeStatsRange();
+      }
+    } else {
+      renderStats();
+    }
+  }
 }
 function setSyncStatus(s) { const d = document.getElementById("syncDot"), l = document.getElementById("syncLabel"); if (s === "ok") { d.style.background = "#22c55e"; d.style.animation = "pulse 2s infinite"; l.textContent = "Sincronizado"; } else { d.style.background = "#ef4444"; d.style.animation = "none"; l.textContent = "Sin conexión"; } }
 
@@ -486,8 +519,8 @@ function renderChat() {
 function scrollChatBottom() { setTimeout(() => { const c = document.getElementById("chatMessages"); if (c) c.scrollTop = c.scrollHeight; }, 100); }
 
 // ===================== ESTADÍSTICAS =====================
-function renderStats() {
-  const errs = datos.errores;
+function renderStats(customErrors) {
+  const errs = customErrors || datos.errores;
   const ag = errs.filter(e => (e["Acción"] || e["Acci\u00f3n"]) === "AGREGADO");
   const el = errs.filter(e => (e["Acción"] || e["Acci\u00f3n"]) === "ELIMINADO");
   document.getElementById("statTotal").textContent = errs.length;
@@ -511,6 +544,36 @@ function renderStats() {
   const topExEl = Object.entries(exElCount).sort((a, b) => b[1] - a[1]).slice(0, 15);
   const maxEEl = topExEl.length ? topExEl[0][1] : 1;
   document.getElementById("statsTopExEliminados").innerHTML = topExEl.length === 0 ? '<p class="text-[10px] italic" style="color:var(--text-dim);">Sin datos</p>' : topExEl.map(([x, c]) => `<div style="margin-bottom:6px;"><div class="flex items-center justify-between"><span class="text-[9px] font-bold" style="color:var(--text);">${esc(x)}</span><span class="text-[10px] font-bold" style="color:var(--red-text);">${c}</span></div><div class="rounded-full overflow-hidden" style="height:10px;background:var(--bg-input);margin-top:2px;"><div style="height:100%;width:${(c / maxEEl * 100).toFixed(0)}%;background:linear-gradient(90deg,#ef4444,#dc2626);border-radius:9999px;"></div></div></div>`).join("");
+}
+
+async function changeStatsRange() {
+  const select = document.getElementById("statsRangeSelect");
+  if (!select) return;
+  const val = select.value;
+  
+  if (val === "actual") {
+    renderStats();
+    return;
+  }
+  
+  let limit = 0;
+  if (val === "4semanas") limit = 3;
+  else if (val === "12semanas") limit = 11;
+  else if (val === "todo") limit = -1;
+  
+  if (cacheHistorico[val]) {
+    renderStats(datos.errores.concat(cacheHistorico[val]));
+    return;
+  }
+  
+  const res = await apiPostBlock({ action: "get_historical_errors", limit: limit });
+  if (res && res.errores) {
+    cacheHistorico[val] = res.errores;
+    renderStats(datos.errores.concat(res.errores));
+  } else {
+    select.value = "actual";
+    renderStats();
+  }
 }
 
 // ===================== ALERTAS =====================
@@ -554,7 +617,7 @@ function showAlerts(msgs, cssClass) {
 }
 
 // ===================== ADMIN =====================
-function cerrarSemana() { const p = document.getElementById("adminPass").value; if (p !== ADMIN_PASSWORD) { showToast("Contraseña incorrecta", "error"); return; } showConfirm("⚠️ Cerrar Semana", "Exportará, enviará correo y limpiará todo. ¿Continuar?", async () => { const r = await apiPostBlock({ action: "cerrar_semana" }); if (r) { showToast(typeof r === "string" ? r : "Cerrado", "success"); document.getElementById("adminPass").value = ""; await cargarDatos(false); } }); }
+function cerrarSemana() { const p = document.getElementById("adminPass").value; if (p !== ADMIN_PASSWORD) { showToast("Contraseña incorrecta", "error"); return; } showConfirm("⚠️ Cerrar Semana", "Exportará, enviará correo y limpiará todo. ¿Continuar?", async () => { const r = await apiPostBlock({ action: "cerrar_semana" }); if (r) { showToast(typeof r === "string" ? r : "Cerrado", "success"); document.getElementById("adminPass").value = ""; cacheHistorico = {}; const select = document.getElementById("statsRangeSelect"); if (select) select.value = "actual"; await cargarDatos(false); } }); }
 function descargarCSVLocal() { if (!datos.errores.length) { showToast("Sin datos", "info"); return; } let csv = "\uFEFF" + "Fecha,Día,Acción,N° Petición,Examen,Usuario\n"; datos.errores.forEach(e => { csv += [e.Fecha || "", e["Día"] || "", e["Acción"] || "", e["N° Petición"] || "", e.Examen || "", e.Usuario || ""].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n"; }); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" })); a.download = `Errores_${new Date().toISOString().slice(0, 10)}.csv`; a.click(); showToast("CSV descargado", "success"); }
 
 // ===================== HELPERS =====================

@@ -94,29 +94,32 @@ function migrateHeaders() {
   }
 }
 
+function getSheetData(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  var headers = data[0];
+  var rows = [];
+  for (var i = 1; i < data.length; i++) {
+    var obj = {};
+    var hasData = false;
+    for (var j = 0; j < headers.length; j++) {
+      if (headers[j]) {
+        obj[headers[j]] = data[i][j] !== undefined && data[i][j] !== null ? data[i][j].toString() : "";
+        if (data[i][j]) hasData = true;
+      }
+    }
+    if (hasData) rows.push(obj);
+  }
+  return rows;
+}
+
 function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  var getSheetData = function (name) {
-    var sheet = ss.getSheetByName(name);
-    if (!sheet) return [];
-    var data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return [];
-    var headers = data[0];
-    var rows = [];
-    for (var i = 1; i < data.length; i++) {
-      var obj = {};
-      var hasData = false;
-      for (var j = 0; j < headers.length; j++) {
-        if (headers[j]) {
-          obj[headers[j]] = data[i][j] !== undefined && data[i][j] !== null ? data[i][j].toString() : "";
-          if (data[i][j]) hasData = true;
-        }
-      }
-      if (hasData) rows.push(obj);
-    }
-    return rows;
-  };
+
 
   var getMaestro = function () {
     var sheet = ss.getSheetByName("Maestro_Examenes");
@@ -172,6 +175,31 @@ function handleAction(payload) {
       centrosSheet.getRange(i + 1, 2, 1, 5).setValues([["NO REVISADO :(", "", "", "", ""]]);
     }
     return "Centros reiniciados.";
+  }
+
+  if (action === "get_historical_errors") {
+    var limit = payload.limit;
+    var sheets = ss.getSheets();
+    var backupSheetNames = [];
+    for (var i = 0; i < sheets.length; i++) {
+      var name = sheets[i].getName();
+      if (name.indexOf("Backup_") === 0) {
+        backupSheetNames.push(name);
+      }
+    }
+    backupSheetNames.sort().reverse();
+    if (typeof limit === "number" && limit > 0) {
+      backupSheetNames = backupSheetNames.slice(0, limit);
+    }
+    var allBackupErrors = [];
+    for (var k = 0; k < backupSheetNames.length; k++) {
+      var sheetData = getSheetData(backupSheetNames[k]);
+      allBackupErrors = allBackupErrors.concat(sheetData);
+    }
+    return {
+      backupsLoaded: backupSheetNames,
+      errores: allBackupErrors
+    };
   }
 
   var sheet = ss.getSheetByName(payload.sheet);
