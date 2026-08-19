@@ -24,7 +24,7 @@ const ESTADOS_CENTRO = [
 
 let datos = { errores: [], muestras: [], curvas: [], urgentes: [], recordatorios: [], custom: [], centros: [], maestro_examenes: [], chat: [] };
 let examenesAgregados = [], examenesEliminados = [];
-let confirmCallback = null, pollTimer = null, pendingSaves = 0;
+let confirmCallback = null, pollTimer = null, pendingSaves = 0, lastMutationTime = 0;
 let alertTimerUrgentes = null, alertTimerMuestras = null;
 let cacheHistorico = {};
 
@@ -230,12 +230,14 @@ async function apiGet() {
   catch (e) { console.error("GET:", e); setSyncStatus("error"); return null; }
 }
 function apiPostBg(payload) {
+  lastMutationTime = Date.now();
   pendingSaves++; showSaving();
   fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload), redirect: "follow" })
     .then(r => r.json()).then(j => { pendingSaves--; if (pendingSaves <= 0) { pendingSaves = 0; hideSaving(); } if (!j.success) showToast("Error: " + (j.error || ""), "error"); })
     .catch(() => { pendingSaves--; if (pendingSaves <= 0) { pendingSaves = 0; hideSaving(); } showToast("Error de conexión", "error"); });
 }
 async function apiPostBlock(payload) {
+  lastMutationTime = Date.now();
   showLoading("Procesando...");
   try { const r = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload), redirect: "follow" }); const j = await r.json(); hideLoading(); if (j.success) return j.data; throw new Error(j.error); }
   catch (e) { hideLoading(); showToast("Error: " + e.message, "error"); return null; }
@@ -267,8 +269,17 @@ function detenerPolling() {
 }
 async function cargarDatos(loader) {
   if (loader) showLoading("Cargando...");
+  const fetchStartTime = Date.now();
   const d = await apiGet();
   if (loader) hideLoading();
+
+  // Si fue un polling en segundo plano y hubo cambios locales después de iniciar el fetch
+  // o todavía hay guardados pendientes en vuelo, no sobreescribir datos locales optimistas
+  if (!loader && (fetchStartTime < lastMutationTime || pendingSaves > 0)) {
+    if (d) setSyncStatus("ok");
+    return;
+  }
+
   if (d) { 
     datos = d; 
     poblarMuestraExamenes(); 
@@ -277,8 +288,20 @@ async function cargarDatos(loader) {
     renderCurvas(); 
     renderUrgentes(); 
     renderRecordatorios(); 
-    renderCustom(); 
-    renderCentros(); 
+    
+    // Proteger campos activos durante polling en segundo plano
+    if (!loader && document.getElementById("customContainer")?.contains(document.activeElement)) {
+      // El usuario está escribiendo en un cuadrante personalizado, no re-renderizar ahora
+    } else {
+      renderCustom(); 
+    }
+    
+    if (!loader && document.getElementById("tablaCentros")?.contains(document.activeElement)) {
+      // El usuario está escribiendo en la tabla de centros, no re-renderizar ahora
+    } else {
+      renderCentros(); 
+    }
+
     renderChat(); 
     setSyncStatus("ok"); 
     
@@ -360,6 +383,17 @@ function renderErrores() {
 }
 
 // ===================== MUESTRAS =====================
+function handleMuestraEnter() {
+  const p = document.getElementById("muestraPeticion").value.trim();
+  const e = document.getElementById("muestraExamen").value;
+  if (p && e) {
+    addMuestra();
+  } else if (p && !e) {
+    document.getElementById("muestraExamen").focus();
+  } else {
+    addMuestra();
+  }
+}
 function addMuestra() {
   const t = document.getElementById("muestraTipo").value, p = document.getElementById("muestraPeticion").value.trim(), e = document.getElementById("muestraExamen").value;
   if (!p || !e) { showToast("Completa Petición y Examen", "error"); return; }
@@ -469,22 +503,63 @@ function renderRecordatorios() { const c = document.getElementById("listaRecorda
 
 // ===================== CUSTOM CUADRANTES =====================
 function crearCuadrante() { const n = prompt("Nombre del cuadrante:"); if (!n || !n.trim()) return; const id = Date.now().toString(); datos.custom.push({ Cuadrante: n.trim(), ID: id, "N° Petición": "", Detalle: "(Creado)" }); renderCustom(); apiPostBg({ action: "insert", sheet: "Pizarra_Custom", row: [n.trim(), id, "", "(Creado)"] }); showToast("✓ Cuadrante creado", "success"); }
-function addCustomRow(q) { const pi = document.getElementById("cp_" + css(q)), di = document.getElementById("cd_" + css(q)); const p = pi ? pi.value.trim() : "", d = di ? di.value.trim() : ""; if (!p && !d) { showToast("Escribe algo", "error"); return; } const id = Date.now().toString(); datos.custom.push({ Cuadrante: q, ID: id, "N° Petición": p, Detalle: d }); renderCustom(); apiPostBg({ action: "insert", sheet: "Pizarra_Custom", row: [q, id, p, d] }); showToast("✓", "success"); }
+function addCustomRow(q) {
+  const pi = document.getElementById("cp_" + css(q)), di = document.getElementById("cd_" + css(q));
+  const p = pi ? pi.value.trim() : "", d = di ? di.value.trim() : "";
+  if (!p && !d) { showToast("Escribe algo", "error"); return; }
+  const id = Date.now().toString();
+  datos.custom.push({ Cuadrante: q, ID: id, "N° Petición": p, Detalle: d });
+  if (pi) pi.value = "";
+  if (di) di.value = "";
+  renderCustom();
+  apiPostBg({ action: "insert", sheet: "Pizarra_Custom", row: [q, id, p, d] });
+  showToast("✓", "success");
+}
 function deleteCustomRow(id) { datos.custom = datos.custom.filter(c => c.ID !== id); renderCustom(); apiPostBg({ action: "delete", sheet: "Pizarra_Custom", id }); }
 function deleteCustomCuadrante(q) { if (!confirm("¿Eliminar '" + q + "'?")) return; datos.custom = datos.custom.filter(c => c.Cuadrante !== q); renderCustom(); apiPostBg({ action: "delete_by_col", sheet: "Pizarra_Custom", column: "Cuadrante", value: q }); showToast("Eliminado", "success"); }
 function css(s) { return s.replace(/[^a-zA-Z0-9]/g, "_"); }
 function renderCustom() {
-  const c = document.getElementById("customContainer"); const qs = [...new Set(datos.custom.map(c => c.Cuadrante))];
-  let h = qs.map(n => { const rows = datos.custom.filter(c => c.Cuadrante === n); const ci = css(n); return `<div class="glass-card p-3"><div class="flex items-center justify-between mb-1.5"><h3 class="text-xs font-bold">${esc(n)}</h3><button onclick="deleteCustomCuadrante('${escA(n)}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">🗑</button></div><div class="flex gap-1 mb-1.5"><input type="text" id="cp_${ci}" class="input-field text-xs" placeholder="Petición" style="width:35%;" oninput="this.value=this.value.replace(/[^0-9]/g,'')" /><input type="text" id="cd_${ci}" class="input-field text-xs" placeholder="Detalle" style="width:50%;" /><button class="btn btn-xs btn-primary" onclick="addCustomRow('${escA(n)}')">+</button></div><div class="space-y-0.5">${rows.filter(r => r["N° Petición"] || (r.Detalle && r.Detalle !== "(Creado)")).map(r => `<div class="flex items-center justify-between py-0.5 px-1.5 rounded text-[9px]" style="background:var(--bg-input);border:1px solid var(--border);"><div><span class="font-mono">${r["N° Petición"] || ""}</span>${r.Detalle && r.Detalle !== "(Creado)" ? ' <span style="color:var(--text-muted);">— ' + esc(r.Detalle) + '</span>' : ''}</div><button onclick="deleteCustomRow('${r.ID}')" style="color:var(--red-text);cursor:pointer;">✕</button></div>`).join("")}</div></div>`; }).join("");
-  h += `<div class="glass-card p-3 flex items-center justify-center border-2 border-dashed cursor-pointer hover:border-indigo-500 transition-colors" style="border-color:var(--border);" onclick="crearCuadrante()"><p class="text-xs" style="color:var(--text-dim);">+ Nuevo</p></div>`; c.innerHTML = h;
+  const c = document.getElementById("customContainer");
+  if (!c) return;
+  
+  // Preservar valores que el usuario esté escribiendo para que el re-renderizado no los borre
+  const savedValues = {};
+  const activeId = document.activeElement ? document.activeElement.id : null;
+  c.querySelectorAll("input").forEach(inp => {
+    if (inp.id && inp.value) savedValues[inp.id] = inp.value;
+  });
+
+  const qs = [...new Set(datos.custom.map(item => item.Cuadrante))];
+  let h = qs.map(n => {
+    const rows = datos.custom.filter(item => item.Cuadrante === n);
+    const ci = css(n);
+    return `<div class="glass-card p-3"><div class="flex items-center justify-between mb-1.5"><h3 class="text-xs font-bold">${esc(n)}</h3><button onclick="deleteCustomCuadrante('${escA(n)}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">🗑</button></div><div class="flex gap-1 mb-1.5"><input type="text" id="cp_${ci}" class="input-field text-xs" placeholder="Petición" style="width:35%;" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')addCustomRow('${escA(n)}')" /><input type="text" id="cd_${ci}" class="input-field text-xs" placeholder="Detalle" style="width:50%;" onkeydown="if(event.key==='Enter')addCustomRow('${escA(n)}')" /><button class="btn btn-xs btn-primary" onclick="addCustomRow('${escA(n)}')">+</button></div><div class="space-y-0.5">${rows.filter(r => r["N° Petición"] || (r.Detalle && r.Detalle !== "(Creado)")).map(r => `<div class="flex items-center justify-between py-0.5 px-1.5 rounded text-[9px]" style="background:var(--bg-input);border:1px solid var(--border);"><div><span class="font-mono">${esc(r["N° Petición"] || "")}</span>${r.Detalle && r.Detalle !== "(Creado)" ? ' <span style="color:var(--text-muted);">— ' + esc(r.Detalle) + '</span>' : ''}</div><button onclick="deleteCustomRow('${r.ID}')" style="color:var(--red-text);cursor:pointer;">✕</button></div>`).join("")}</div></div>`;
+  }).join("");
+  h += `<div class="glass-card p-3 flex items-center justify-center border-2 border-dashed cursor-pointer hover:border-indigo-500 transition-colors" style="border-color:var(--border);" onclick="crearCuadrante()"><p class="text-xs" style="color:var(--text-dim);">+ Nuevo</p></div>`;
+  c.innerHTML = h;
+
+  // Restaurar valores y foco
+  for (const [id, val] of Object.entries(savedValues)) {
+    const el = document.getElementById(id);
+    if (el) el.value = val;
+  }
+  if (activeId) {
+    const el = document.getElementById(activeId);
+    if (el) el.focus();
+  }
 }
 
 // ===================== CENTROS =====================
 function renderCentros() {
-  const tb = document.getElementById("tablaCentros"); if (!datos.centros.length) { tb.innerHTML = '<tr><td colspan="6" class="p-3 text-center text-xs" style="color:var(--text-dim);">Sin centros</td></tr>'; return; }
+  const tb = document.getElementById("tablaCentros");
+  if (!datos.centros.length) {
+    tb.innerHTML = '<tr><td colspan="6" class="p-3 text-center text-xs" style="color:var(--text-dim);">Sin centros</td></tr>';
+    return;
+  }
   tb.innerHTML = datos.centros.map(c => {
-    const e = c.Estado || "NO REVISADO :("; const info = ESTADOS_CENTRO.find(s => s.value === e) || ESTADOS_CENTRO[0];
-    return `<tr class="row-hover" style="border-bottom:1px solid var(--border);"><td class="px-2 py-2 font-semibold text-xs">${c.Centro}</td><td class="px-2 py-2 text-center"><select onchange="updateCentro('${escA(c.Centro)}','Estado',this.value)" class="${info.css}" style="cursor:pointer;font-size:.6rem;padding:.15rem .4rem;border-radius:9999px;position:relative;z-index:1;">${ESTADOS_CENTRO.map(s => `<option value="${s.value}" ${s.value === e ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">${s.label}</option>`).join("")}</select></td><td class="px-1 py-2 text-center"><input type="text" value="${c["Pdte Rev"] || ''}" placeholder="—" onchange="updateCentro('${escA(c.Centro)}','Pdte Rev',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${c["Pdte Val"] || ''}" placeholder="—" onchange="updateCentro('${escA(c.Centro)}','Pdte Val',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${c["Rev Hasta"] || ''}" placeholder="—" onchange="updateCentro('${escA(c.Centro)}','Rev Hasta',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${c.Responsable || ''}" placeholder="—" maxlength="10" onchange="updateCentro('${escA(c.Centro)}','Responsable',this.value.toUpperCase())" class="input-field text-center text-[10px] font-bold" style="width:70px;text-transform:uppercase;" /></td></tr>`;
+    const e = c.Estado || "NO REVISADO :(";
+    const info = ESTADOS_CENTRO.find(s => s.value === e) || ESTADOS_CENTRO[0];
+    return `<tr class="row-hover" style="border-bottom:1px solid var(--border);"><td class="px-2 py-2 font-semibold text-xs">${esc(c.Centro)}</td><td class="px-2 py-2 text-center"><select onchange="updateCentro('${escA(c.Centro)}','Estado',this.value)" class="${info.css}" style="cursor:pointer;font-size:.6rem;padding:.15rem .4rem;border-radius:9999px;position:relative;z-index:1;">${ESTADOS_CENTRO.map(s => `<option value="${s.value}" ${s.value === e ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">${s.label}</option>`).join("")}</select></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Pdte Rev"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Pdte Rev',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Pdte Val"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Pdte Val',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Rev Hasta"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Rev Hasta',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c.Responsable || '')}" placeholder="—" maxlength="10" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Responsable',this.value.toUpperCase())" class="input-field text-center text-[10px] font-bold" style="width:70px;text-transform:uppercase;" /></td></tr>`;
   }).join("");
 }
 function updateCentro(c, f, v) { const i = datos.centros.find(x => x.Centro === c); if (i) i[f] = v; renderCentros(); apiPostBg({ action: "update", sheet: "Centros", id: c, updates: { [f]: v } }); showToast(`${c}: OK`, "success"); }

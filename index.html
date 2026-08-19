@@ -747,11 +747,11 @@
           </div>
           <div><label class="block text-[10px] mb-0.5 font-medium" style="color:var(--text-muted);">N° de
               Petición</label>
-            <input type="text" id="errPeticion" class="input-field" placeholder="Ej: 123456" />
+            <input type="text" id="errPeticion" class="input-field" placeholder="Ej: 123456" onkeydown="if(event.key==='Enter')document.getElementById('errUsuario').focus()" />
           </div>
           <div><label class="block text-[10px] mb-0.5 font-medium" style="color:var(--text-muted);">Usuario
               responsable</label>
-            <input type="text" id="errUsuario" class="input-field" placeholder="Nombre o iniciales" maxlength="20" />
+            <input type="text" id="errUsuario" class="input-field" placeholder="Nombre o iniciales" maxlength="20" onkeydown="if(event.key==='Enter')document.getElementById('fuzzyAgregar').focus()" />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 mb-3">
@@ -796,8 +796,8 @@
               <option value="REFRIGERADA (R10)">R10</option>
               <option value="CONGELADA (C1)">C1</option>
             </select>
-            <input type="text" id="muestraPeticion" class="input-field" placeholder="Petición" />
-            <div class="flex gap-1"><select id="muestraExamen" class="select-field flex-1 text-xs">
+            <input type="text" id="muestraPeticion" class="input-field" placeholder="Petición" onkeydown="if(event.key==='Enter')handleMuestraEnter()" />
+            <div class="flex gap-1"><select id="muestraExamen" class="select-field flex-1 text-xs" onkeydown="if(event.key==='Enter')addMuestra()">
                 <option value="">Examen</option>
               </select><button class="btn btn-xs btn-primary" onclick="addMuestra()">+</button></div>
           </div>
@@ -840,7 +840,7 @@
           <h2 class="text-sm font-bold mb-1">📈 Curvas (Glucosa / Insulina)</h2>
           <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Registro y validación</p>
           <div class="flex gap-1.5 mb-2.5"><input type="text" id="curvaPeticion" class="input-field"
-              placeholder="N° Petición" /><button class="btn btn-sm btn-primary" onclick="addCurva()">+ Agregar</button>
+              placeholder="N° Petición" onkeydown="if(event.key==='Enter')addCurva()" /><button class="btn btn-sm btn-primary" onclick="addCurva()">+ Agregar</button>
           </div>
           <div class="rounded-lg overflow-hidden" style="border:1px solid var(--border);">
             <table class="w-full text-xs">
@@ -862,7 +862,7 @@
           <h2 class="text-sm font-bold mb-1">🚨 Pacientes Urgentes</h2>
           <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Control de urgentes</p>
           <div class="flex gap-1.5 mb-2.5"><input type="text" id="urgentePeticion" class="input-field"
-              placeholder="N° Petición" /><button class="btn btn-sm btn-danger" onclick="addUrgente()">+
+              placeholder="N° Petición" onkeydown="if(event.key==='Enter')addUrgente()" /><button class="btn btn-sm btn-danger" onclick="addUrgente()">+
               Agregar</button></div>
           <div class="rounded-lg overflow-hidden" style="border:1px solid var(--border);">
             <table class="w-full text-xs">
@@ -882,7 +882,7 @@
           <h2 class="text-sm font-bold mb-1">📌 Recordatorios</h2>
           <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Notas compartidas</p>
           <div class="flex gap-1.5 mb-2.5"><input type="text" id="recordatorioTexto" class="input-field"
-              placeholder="Escribe una nota..." /><button class="btn btn-sm btn-primary" onclick="addRecordatorio()">+
+              placeholder="Escribe una nota..." onkeydown="if(event.key==='Enter')addRecordatorio()" /><button class="btn btn-sm btn-primary" onclick="addRecordatorio()">+
               Añadir</button></div>
           <div id="listaRecordatorios" class="space-y-1"></div>
         </div>
