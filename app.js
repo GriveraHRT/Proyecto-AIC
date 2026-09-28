@@ -504,7 +504,8 @@ function renderRecordatorios() { const c = document.getElementById("listaRecorda
 // ===================== CUSTOM CUADRANTES =====================
 function crearCuadrante() { const n = prompt("Nombre del cuadrante:"); if (!n || !n.trim()) return; const id = Date.now().toString(); datos.custom.push({ Cuadrante: n.trim(), ID: id, "N° Petición": "", Detalle: "(Creado)" }); renderCustom(); apiPostBg({ action: "insert", sheet: "Pizarra_Custom", row: [n.trim(), id, "", "(Creado)"] }); showToast("✓ Cuadrante creado", "success"); }
 function addCustomRow(q) {
-  const pi = document.getElementById("cp_" + css(q)), di = document.getElementById("cd_" + css(q));
+  const ci = css(q);
+  const pi = document.getElementById("cp_" + ci), di = document.getElementById("cd_" + ci);
   const p = pi ? pi.value.trim() : "", d = di ? di.value.trim() : "";
   if (!p && !d) { showToast("Escribe algo", "error"); return; }
   const id = Date.now().toString();
@@ -512,8 +513,22 @@ function addCustomRow(q) {
   if (pi) pi.value = "";
   if (di) di.value = "";
   renderCustom();
+  const newPi = document.getElementById("cp_" + ci);
+  if (newPi) newPi.focus();
   apiPostBg({ action: "insert", sheet: "Pizarra_Custom", row: [q, id, p, d] });
   showToast("✓", "success");
+}
+function handleCustomEnter(q, isPeticion) {
+  const ci = css(q);
+  const pi = document.getElementById("cp_" + ci);
+  const di = document.getElementById("cd_" + ci);
+  const p = pi ? pi.value.trim() : "";
+  const d = di ? di.value.trim() : "";
+  if (isPeticion && p && !d && di) {
+    di.focus();
+  } else {
+    addCustomRow(q);
+  }
 }
 function deleteCustomRow(id) { datos.custom = datos.custom.filter(c => c.ID !== id); renderCustom(); apiPostBg({ action: "delete", sheet: "Pizarra_Custom", id }); }
 function deleteCustomCuadrante(q) { if (!confirm("¿Eliminar '" + q + "'?")) return; datos.custom = datos.custom.filter(c => c.Cuadrante !== q); renderCustom(); apiPostBg({ action: "delete_by_col", sheet: "Pizarra_Custom", column: "Cuadrante", value: q }); showToast("Eliminado", "success"); }
@@ -532,8 +547,42 @@ function renderCustom() {
   const qs = [...new Set(datos.custom.map(item => item.Cuadrante))];
   let h = qs.map(n => {
     const rows = datos.custom.filter(item => item.Cuadrante === n);
+    const validRows = rows.filter(r => r["N° Petición"] || (r.Detalle && r.Detalle !== "(Creado)"));
     const ci = css(n);
-    return `<div class="glass-card p-3"><div class="flex items-center justify-between mb-1.5"><h3 class="text-xs font-bold">${esc(n)}</h3><button onclick="deleteCustomCuadrante('${escA(n)}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">🗑</button></div><div class="flex gap-1 mb-1.5"><input type="text" id="cp_${ci}" class="input-field text-xs" placeholder="Petición" style="width:35%;" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')addCustomRow('${escA(n)}')" /><input type="text" id="cd_${ci}" class="input-field text-xs" placeholder="Detalle" style="width:50%;" onkeydown="if(event.key==='Enter')addCustomRow('${escA(n)}')" /><button class="btn btn-xs btn-primary" onclick="addCustomRow('${escA(n)}')">+</button></div><div class="space-y-0.5">${rows.filter(r => r["N° Petición"] || (r.Detalle && r.Detalle !== "(Creado)")).map(r => `<div class="flex items-center justify-between py-0.5 px-1.5 rounded text-[9px]" style="background:var(--bg-input);border:1px solid var(--border);"><div><span class="font-mono">${esc(r["N° Petición"] || "")}</span>${r.Detalle && r.Detalle !== "(Creado)" ? ' <span style="color:var(--text-muted);">— ' + esc(r.Detalle) + '</span>' : ''}</div><button onclick="deleteCustomRow('${r.ID}')" style="color:var(--red-text);cursor:pointer;">✕</button></div>`).join("")}</div></div>`;
+    return `<div class="glass-card p-3">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xs font-bold">${esc(n)}</h3>
+        <button onclick="deleteCustomCuadrante('${escA(n)}')" class="text-[10px]" style="color:var(--red-text);cursor:pointer;" title="Eliminar cuadrante">🗑</button>
+      </div>
+      <div class="flex gap-1 mb-2">
+        <input type="text" id="cp_${ci}" class="input-field text-xs" placeholder="Petición" style="width:38%;" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')handleCustomEnter('${escA(n)}', true)" />
+        <input type="text" id="cd_${ci}" class="input-field text-xs flex-1" placeholder="Detalle" onkeydown="if(event.key==='Enter')handleCustomEnter('${escA(n)}', false)" />
+        <button class="btn btn-xs btn-primary" onclick="addCustomRow('${escA(n)}')">+</button>
+      </div>
+      <div class="rounded-lg overflow-hidden" style="border:1px solid var(--border);">
+        <table class="w-full text-xs">
+          <thead>
+            <tr style="background:var(--bg-input);">
+              <th class="text-left px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;width:38%;">Petición</th>
+              <th class="text-left px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;">Detalle</th>
+              <th class="w-5"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${validRows.length === 0
+              ? `<tr><td colspan="3" class="px-2 py-2 text-center text-[9px] italic" style="color:var(--text-dim);">Sin registros</td></tr>`
+              : validRows.map(r => `
+                <tr class="row-hover" style="border-bottom:1px solid var(--border);">
+                  <td class="px-2 py-1 font-mono text-xs font-semibold" style="color:var(--text);">${esc(r["N° Petición"] || "—")}</td>
+                  <td class="px-2 py-1">${r.Detalle && r.Detalle !== "(Creado)" ? `<span class="exam-pill font-medium">${esc(r.Detalle)}</span>` : '<span style="color:var(--text-dim);">—</span>'}</td>
+                  <td class="px-1 text-center"><button onclick="deleteCustomRow('${r.ID}')" class="text-[10px] hover:opacity-80 transition-opacity" style="color:var(--red-text);cursor:pointer;" title="Eliminar">✕</button></td>
+                </tr>
+              `).join("")
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>`;
   }).join("");
   h += `<div class="glass-card p-3 flex items-center justify-center border-2 border-dashed cursor-pointer hover:border-indigo-500 transition-colors" style="border-color:var(--border);" onclick="crearCuadrante()"><p class="text-xs" style="color:var(--text-dim);">+ Nuevo</p></div>`;
   c.innerHTML = h;
