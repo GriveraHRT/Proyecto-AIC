@@ -11,6 +11,7 @@ function setup() {
   var sheets = {
     "Errores": ["Fecha", "Día", "Acción", "N° Petición", "Examen", "Usuario"],
     "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen", "Almacenada", "Fecha"],
+    "Pizarra_Pendientes": ["ID", "N° Petición", "Examen", "Comentario", "Procesada", "Fecha"],
     "Pizarra_Curvas": ["ID", "N° Petición", "Validada", "Fecha"],
     "Pizarra_Urgentes": ["ID", "N° Petición", "Validada", "Fecha"],
     "Pizarra_Recordatorios": ["ID", "Texto", "Usuario", "Fecha"],
@@ -75,6 +76,7 @@ function migrateHeaders() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var expected = {
     "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen", "Almacenada", "Fecha"],
+    "Pizarra_Pendientes": ["ID", "N° Petición", "Examen", "Comentario", "Procesada", "Fecha"],
     "Pizarra_Curvas": ["ID", "N° Petición", "Validada", "Fecha"],
     "Pizarra_Urgentes": ["ID", "N° Petición", "Validada", "Fecha"],
     "Centros": ["Centro", "Estado", "Pdte Rev", "Pdte Val", "Rev Hasta", "Responsable"]
@@ -135,6 +137,7 @@ function doGet(e) {
   var response = {
     errores: getSheetData("Errores"),
     muestras: getSheetData("Pizarra_Muestras"),
+    pendientes: getSheetData("Pizarra_Pendientes"),
     curvas: getSheetData("Pizarra_Curvas"),
     urgentes: getSheetData("Pizarra_Urgentes"),
     recordatorios: getSheetData("Pizarra_Recordatorios"),
@@ -203,6 +206,10 @@ function handleAction(payload) {
   }
 
   var sheet = ss.getSheetByName(payload.sheet);
+  if (!sheet && payload.sheet === "Pizarra_Pendientes") {
+    sheet = ss.insertSheet("Pizarra_Pendientes");
+    sheet.getRange(1, 1, 1, 6).setValues([["ID", "N° Petición", "Examen", "Comentario", "Procesada", "Fecha"]]);
+  }
   if (!sheet) throw new Error("No se encontró la hoja: " + payload.sheet);
 
   if (action === "insert") {

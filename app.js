@@ -22,10 +22,10 @@ const ESTADOS_CENTRO = [
   { value: "NO LLEGÓ", label: "NO LLEGÓ", css: "st-no-llego" }
 ];
 
-let datos = { errores: [], muestras: [], curvas: [], urgentes: [], recordatorios: [], custom: [], centros: [], maestro_examenes: [], chat: [] };
-let examenesAgregados = [], examenesEliminados = [];
+let datos = { errores: [], muestras: [], pendientes: [], curvas: [], urgentes: [], recordatorios: [], custom: [], centros: [], maestro_examenes: [], chat: [] };
+let examenesAgregados = [], examenesEliminados = [], examenesPendientes = [];
 let confirmCallback = null, pollTimer = null, pendingSaves = 0, lastMutationTime = 0;
-let alertTimerUrgentes = null, alertTimerMuestras = null;
+let alertTimerUrgentes = null, alertTimerMuestras = null, alertTimerPendientes = null;
 let cacheHistorico = {};
 
 // ===================== INIT =====================
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function setupInputValidations() {
-  const numericIds = ["errPeticion", "muestraPeticion", "curvaPeticion", "urgentePeticion"];
+  const numericIds = ["errPeticion", "muestraPeticion", "pendientePeticion", "curvaPeticion", "urgentePeticion"];
   numericIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -282,9 +282,11 @@ async function cargarDatos(loader) {
 
   if (d) { 
     datos = d; 
+    datos.pendientes = datos.pendientes || [];
     poblarMuestraExamenes(); 
     renderErrores(); 
     renderMuestras(); 
+    renderPendientes();
     renderCurvas(); 
     renderUrgentes(); 
     renderRecordatorios(); 
@@ -328,9 +330,26 @@ function poblarMuestraExamenes() {
   const currentJson = JSON.stringify(l);
   if (currentJson === lastExamenesJson) return;
   lastExamenesJson = currentJson;
-  const sel = document.getElementById("muestraExamen"); if (!sel) return;
-  const cv = sel.value; while (sel.options.length > 1) sel.remove(1);
-  l.forEach(e => { const o = document.createElement("option"); o.value = e; o.textContent = e; sel.appendChild(o); }); sel.value = cv;
+
+  const selM = document.getElementById("muestraExamen");
+  if (selM) {
+    const cv = selM.value;
+    while (selM.options.length > 1) selM.remove(1);
+    l.forEach(e => { const o = document.createElement("option"); o.value = e; o.textContent = e; selM.appendChild(o); });
+    selM.value = cv;
+  }
+
+  const selP = document.getElementById("pendienteExamen");
+  if (selP) {
+    const cvP = selP.value;
+    while (selP.options.length > 1) selP.remove(1);
+    const oCustom = document.createElement("option");
+    oCustom.value = "__custom__";
+    oCustom.textContent = "✏️ Escribir otro examen...";
+    selP.appendChild(oCustom);
+    l.forEach(e => { const o = document.createElement("option"); o.value = e; o.textContent = e; selP.appendChild(o); });
+    selP.value = cvP;
+  }
 }
 
 // ===================== ERRORES =====================
@@ -440,6 +459,227 @@ function renderMuestras() {
   };
   mk(datos.muestras.filter(m => m.Tipo && m.Tipo.includes("R10")), "tablaR10");
   mk(datos.muestras.filter(m => m.Tipo && m.Tipo.includes("C1")), "tablaC1");
+}
+
+// ===================== PENDIENTES DEL DÍA =====================
+function checkCustomPendienteExamen(sel) {
+  if (sel.value === "__custom__") {
+    const val = prompt("Ingresa el nombre del examen:");
+    if (val && val.trim()) {
+      addCustomExamToPendiente(val.trim().toUpperCase());
+    }
+    sel.value = "";
+  }
+}
+
+function addCustomExamToPendiente(name) {
+  if (!name) return;
+  if (!examenesPendientes.includes(name)) {
+    examenesPendientes.push(name);
+    renderPendienteExamenPills();
+  }
+}
+
+function addPendienteExamenPill() {
+  const sel = document.getElementById("pendienteExamen");
+  const val = sel.value;
+  if (!val || val === "__custom__") {
+    showToast("Selecciona un examen", "error");
+    return;
+  }
+  if (!examenesPendientes.includes(val)) {
+    examenesPendientes.push(val);
+    renderPendienteExamenPills();
+  }
+  sel.value = "";
+}
+
+function removePendienteExamenPill(ex) {
+  examenesPendientes = examenesPendientes.filter(e => e !== ex);
+  renderPendienteExamenPills();
+}
+
+function renderPendienteExamenPills() {
+  const cont = document.getElementById("listaPendienteExamenes");
+  if (!cont) return;
+  cont.innerHTML = examenesPendientes.map(ex => `
+    <span class="exam-pill font-medium">
+      ${esc(ex)}
+      <button type="button" onclick="removePendienteExamenPill('${escA(ex)}')" style="cursor:pointer;margin-left:3px;opacity:.7;" title="Quitar examen">✕</button>
+    </span>
+  `).join("");
+}
+
+function handlePendienteEnter() {
+  const p = document.getElementById("pendientePeticion").value.trim();
+  const e = document.getElementById("pendienteExamen").value;
+  if (!p) {
+    showToast("Ingresa N° Petición", "error");
+    return;
+  }
+  if (!e && examenesPendientes.length === 0) {
+    document.getElementById("pendienteExamen").focus();
+  } else {
+    document.getElementById("pendienteComentario").focus();
+  }
+}
+
+function handlePendienteExamenEnter() {
+  const sel = document.getElementById("pendienteExamen");
+  const e = sel.value;
+  if (e && e !== "__custom__") {
+    addPendienteExamenPill();
+    document.getElementById("pendienteComentario").focus();
+  } else {
+    document.getElementById("pendienteComentario").focus();
+  }
+}
+
+function addPendiente() {
+  const p = document.getElementById("pendientePeticion").value.trim();
+  const selEx = document.getElementById("pendienteExamen").value;
+  const com = document.getElementById("pendienteComentario").value.trim();
+
+  if (!p) {
+    showToast("Ingresa N° Petición", "error");
+    document.getElementById("pendientePeticion").focus();
+    return;
+  }
+
+  let exams = [...examenesPendientes];
+  if (selEx && selEx !== "__custom__" && !exams.includes(selEx)) {
+    exams.push(selEx);
+  }
+
+  if (exams.length === 0) {
+    showToast("Selecciona al menos un examen", "error");
+    document.getElementById("pendienteExamen").focus();
+    return;
+  }
+
+  const id = Date.now().toString();
+  const fecha = fechaHoy();
+  const examenStr = exams.join(" | ");
+
+  if (!datos.pendientes) datos.pendientes = [];
+  datos.pendientes.push({
+    ID: id,
+    "N° Petición": p,
+    Examen: examenStr,
+    Comentario: com,
+    Procesada: "No",
+    Fecha: fecha
+  });
+
+  renderPendientes();
+  apiPostBg({
+    action: "insert",
+    sheet: "Pizarra_Pendientes",
+    row: [id, p, examenStr, com, "No", fecha]
+  });
+
+  document.getElementById("pendientePeticion").value = "";
+  document.getElementById("pendienteExamen").value = "";
+  document.getElementById("pendienteComentario").value = "";
+  examenesPendientes = [];
+  renderPendienteExamenPills();
+
+  document.getElementById("pendientePeticion").focus();
+  showToast("✓ Pendiente registrado", "success");
+}
+
+function togglePendienteProcesada(id, val) {
+  if (!datos.pendientes) return;
+  const item = datos.pendientes.find(m => m.ID === id);
+  if (item) item.Procesada = val;
+  renderPendientes();
+  apiPostBg({ action: "update", sheet: "Pizarra_Pendientes", id, updates: { Procesada: val } });
+}
+
+function deletePendiente(id) {
+  if (!datos.pendientes) return;
+  datos.pendientes = datos.pendientes.filter(m => m.ID !== id);
+  renderPendientes();
+  apiPostBg({ action: "delete", sheet: "Pizarra_Pendientes", id });
+}
+
+function editPendienteComentario(id) {
+  if (!datos.pendientes) return;
+  const item = datos.pendientes.find(m => m.ID === id);
+  if (!item) return;
+  const nuevo = prompt("Editar comentario adicional:", item.Comentario || "");
+  if (nuevo !== null) {
+    item.Comentario = nuevo.trim();
+    renderPendientes();
+    apiPostBg({ action: "update", sheet: "Pizarra_Pendientes", id, updates: { Comentario: nuevo.trim() } });
+    showToast("✓ Comentario actualizado", "success");
+  }
+}
+
+function renderPendientes() {
+  const tb = document.getElementById("tablaPendientes");
+  if (!tb) return;
+  const list = datos.pendientes || [];
+  const sorted = [...list].sort((a, b) => {
+    const da = parseFecha(a.Fecha), db = parseFecha(b.Fecha);
+    return db - da;
+  });
+
+  const badge = document.getElementById("badgePendientesCount");
+  if (badge) {
+    if (sorted.length > 0) {
+      const noProcCount = sorted.filter(m => m.Procesada !== "Sí" && m.Procesada !== "Si").length;
+      badge.style.display = "inline-block";
+      if (noProcCount > 0) {
+        badge.textContent = `${noProcCount} pendiente${noProcCount > 1 ? 's' : ''}`;
+        badge.style.background = "rgba(239,68,68,0.15)";
+        badge.style.color = "#f87171";
+      } else {
+        badge.textContent = "✓ Al día";
+        badge.style.background = "rgba(16,185,129,0.15)";
+        badge.style.color = "#34d399";
+      }
+    } else {
+      badge.style.display = "none";
+    }
+  }
+
+  if (sorted.length === 0) {
+    tb.innerHTML = `<tr><td colspan="6" class="px-2 py-3 text-center text-[10px] italic" style="color:var(--text-dim);">Sin pendientes del día</td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = sorted.map(m => {
+    const proc = m.Procesada === "Sí" || m.Procesada === "Si";
+    const cls = proc ? "st-revisado" : "st-no-revisado";
+
+    let examPills = "";
+    if (m.Examen) {
+      const parts = m.Examen.includes(" | ") ? m.Examen.split(" | ") : [m.Examen];
+      examPills = parts.map(ex => `<span class="exam-pill font-medium mr-1 mb-0.5 inline-block">${esc(ex.trim())}</span>`).join("");
+    } else {
+      examPills = '<span style="color:var(--text-dim);">—</span>';
+    }
+
+    const comText = m.Comentario || "";
+    const comentarioHtml = comText
+      ? `<span class="text-[10px] italic max-w-[150px] inline-block truncate cursor-pointer hover:underline" style="color:var(--text);" onclick="editPendienteComentario('${m.ID}')" title="${escA(comText)} (Clic para editar)">${esc(comText)}</span>`
+      : `<button type="button" onclick="editPendienteComentario('${m.ID}')" class="text-[9px] hover:underline" style="color:var(--text-dim);cursor:pointer;" title="Agregar comentario">+ Nota</button>`;
+
+    return `<tr class="row-hover" style="border-bottom:1px solid var(--border);">
+      <td class="px-2 py-1.5 text-[8px]" style="color:var(--text-dim);">${formatFecha(m.Fecha)}</td>
+      <td class="px-2 py-1.5 font-mono text-xs font-semibold" style="color:var(--text);">${esc(m["N° Petición"] || "—")}</td>
+      <td class="px-2 py-1.5"><div class="flex flex-wrap items-center">${examPills}</div></td>
+      <td class="px-2 py-1.5">${comentarioHtml}</td>
+      <td class="px-2 py-1.5 text-center">
+        <select onchange="togglePendienteProcesada('${m.ID}',this.value)" class="${cls}" style="font-size:.65rem;font-weight:700;padding:.15rem .45rem;border-radius:9999px;cursor:pointer;background:transparent;">
+          <option value="No" ${!proc ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">❌ No</option>
+          <option value="Sí" ${proc ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">✅ Sí</option>
+        </select>
+      </td>
+      <td class="px-1 text-center"><button onclick="deletePendiente('${m.ID}')" class="text-[9px] hover:opacity-80 transition-opacity" style="color:var(--red-text);cursor:pointer;" title="Eliminar">✕</button></td>
+    </tr>`;
+  }).join("");
 }
 
 // ===================== CURVAS / URGENTES =====================
@@ -704,10 +944,11 @@ async function changeStatsRange() {
 function iniciarAlertas() {
   // Urgentes y Curvas: cada 20 min
   alertTimerUrgentes = setInterval(() => { checkAlertUrgentes(); checkAlertCurvas(); }, ALERT_URGENTES_MS);
-  // Muestras no almacenadas: cada 2 horas
+  // Muestras y Pendientes no procesados: cada 2 horas
   alertTimerMuestras = setInterval(() => { checkAlertMuestras(); }, ALERT_MUESTRAS_MS);
+  alertTimerPendientes = setInterval(() => { checkAlertPendientes(); }, ALERT_MUESTRAS_MS);
   // También verificar al primer polling (5 seg después de carga)
-  setTimeout(() => { checkAlertUrgentes(); checkAlertCurvas(); checkAlertMuestras(); }, 5000);
+  setTimeout(() => { checkAlertUrgentes(); checkAlertCurvas(); checkAlertMuestras(); checkAlertPendientes(); }, 5000);
 }
 
 function checkAlertUrgentes() {
@@ -730,6 +971,15 @@ function checkAlertMuestras() {
   const noAlm = datos.muestras.filter(m => m.Almacenada !== "Sí" && m.Almacenada !== "Si");
   if (noAlm.length > 0) {
     const msgs = noAlm.map(m => `🧊 Muestra #${m["N° Petición"]} (${m.Examen}) NO almacenada`);
+    showAlerts(msgs, "alert-item alert-item-warn");
+  }
+}
+
+function checkAlertPendientes() {
+  if (!datos.pendientes) return;
+  const noProc = datos.pendientes.filter(p => p.Procesada !== "Sí" && p.Procesada !== "Si");
+  if (noProc.length > 0) {
+    const msgs = noProc.map(p => `📋 Pendiente #${p["N° Petición"]} (${p.Examen}) NO procesada`);
     showAlerts(msgs, "alert-item alert-item-warn");
   }
 }

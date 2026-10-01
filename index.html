@@ -837,6 +837,46 @@
           </div>
         </div>
         <div class="glass-card p-4">
+          <div class="flex items-center justify-between mb-1">
+            <h2 class="text-sm font-bold flex items-center gap-1.5">
+              <span>📋</span> Pendientes del Día
+            </h2>
+            <span id="badgePendientesCount" class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="display:none;"></span>
+          </div>
+          <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Peticiones y exámenes pendientes de procesamiento</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-1.5">
+            <input type="text" id="pendientePeticion" class="input-field text-xs" placeholder="Petición" onkeydown="if(event.key==='Enter')handlePendienteEnter()" />
+            <div class="flex gap-1">
+              <select id="pendienteExamen" class="select-field flex-1 text-xs" onchange="checkCustomPendienteExamen(this)" onkeydown="if(event.key==='Enter')handlePendienteExamenEnter()">
+                <option value="">Examen</option>
+              </select>
+              <button class="btn btn-xs btn-outline" type="button" onclick="addPendienteExamenPill()" title="Añadir otro examen a esta petición">+ Examen</button>
+            </div>
+          </div>
+          <div id="listaPendienteExamenes" class="flex flex-wrap gap-1 mb-1.5 min-h-[0px]"></div>
+          <div class="flex gap-1.5 mb-2.5">
+            <input type="text" id="pendienteComentario" class="input-field text-xs flex-1" placeholder="Comentario adicional (opcional)" onkeydown="if(event.key==='Enter')addPendiente()" />
+            <button class="btn btn-xs btn-primary px-3" onclick="addPendiente()">+ Agregar</button>
+          </div>
+          <div class="rounded-lg overflow-x-auto" style="border:1px solid var(--border);">
+            <table class="w-full text-xs">
+              <thead>
+                <tr style="background:var(--bg-input);">
+                  <th class="text-left px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;">Fecha</th>
+                  <th class="text-left px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;">Petición</th>
+                  <th class="text-left px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;">Examen</th>
+                  <th class="text-left px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;">Comentario</th>
+                  <th class="text-center px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;">Procesada</th>
+                  <th class="w-5"></th>
+                </tr>
+              </thead>
+              <tbody id="tablaPendientes"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+        <div class="glass-card p-4">
           <h2 class="text-sm font-bold mb-1">📈 Curvas (Glucosa / Insulina)</h2>
           <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Registro y validación</p>
           <div class="flex gap-1.5 mb-2.5"><input type="text" id="curvaPeticion" class="input-field"
@@ -856,8 +896,6 @@
             </table>
           </div>
         </div>
-      </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
         <div class="glass-card p-4">
           <h2 class="text-sm font-bold mb-1">🚨 Pacientes Urgentes</h2>
           <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Control de urgentes</p>
@@ -878,7 +916,7 @@
             </table>
           </div>
         </div>
-        <div class="glass-card p-4">
+        <div class="glass-card p-4 md:col-span-2 lg:col-span-1">
           <h2 class="text-sm font-bold mb-1">📌 Recordatorios</h2>
           <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Notas compartidas</p>
           <div class="flex gap-1.5 mb-2.5"><input type="text" id="recordatorioTexto" class="input-field"
@@ -1039,7 +1077,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260928_v2"></script>
+  <script src="app.js?v=20261001_v1"></script>
 </body>
 
 </html>
