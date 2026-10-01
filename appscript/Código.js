@@ -228,8 +228,10 @@ function handleAction(payload) {
   if (action === "update") {
     var data = sheet.getDataRange().getValues();
     var headers = data[0];
+    var idCol = headers.indexOf("ID");
+    if (idCol === -1) idCol = 0;
     for (var i = 1; i < data.length; i++) {
-      if (data[i][0].toString() == payload.id) {
+      if (data[i][idCol] !== undefined && data[i][idCol].toString().trim() == payload.id.toString().trim()) {
         if (payload.row) {
           sheet.getRange(i + 1, 1, 1, payload.row.length).setValues([payload.row]);
         } else if (payload.updates) {
@@ -246,8 +248,11 @@ function handleAction(payload) {
 
   if (action === "delete") {
     var data2 = sheet.getDataRange().getValues();
+    var headers2 = data2[0];
+    var idCol2 = headers2.indexOf("ID");
+    if (idCol2 === -1) idCol2 = 0;
     for (var i = 1; i < data2.length; i++) {
-      if (data2[i][0].toString() == payload.id) {
+      if (data2[i][idCol2] !== undefined && data2[i][idCol2].toString().trim() == payload.id.toString().trim()) {
         sheet.deleteRow(i + 1);
         return "OK";
       }
