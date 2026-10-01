@@ -217,6 +217,14 @@ function handleAction(payload) {
     return "OK";
   }
 
+  if (action === "clear_sheet") {
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      sheet.deleteRows(2, lastRow - 1);
+    }
+    return "OK";
+  }
+
   if (action === "update") {
     var data = sheet.getDataRange().getValues();
     var headers = data[0];

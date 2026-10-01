@@ -841,7 +841,10 @@
             <h2 class="text-sm font-bold flex items-center gap-1.5">
               <span>📋</span> Pendientes del Día
             </h2>
-            <span id="badgePendientesCount" class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="display:none;"></span>
+            <div class="flex items-center gap-1.5">
+              <span id="badgePendientesCount" class="text-[10px] px-2 py-0.5 rounded-full font-semibold" style="display:none;"></span>
+              <button class="btn btn-xs btn-danger" onclick="clearPendientes()" title="Eliminar todos los pendientes del día">🗑️ Limpiar todo</button>
+            </div>
           </div>
           <p class="text-[9px] mb-2.5" style="color:var(--text-dim);">Peticiones y exámenes pendientes de procesamiento</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-1.5">
@@ -1077,7 +1080,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261001_v1"></script>
+  <script src="app.js?v=20261001_v2"></script>
 </body>
 
 </html>

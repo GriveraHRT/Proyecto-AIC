@@ -603,6 +603,19 @@ function deletePendiente(id) {
   apiPostBg({ action: "delete", sheet: "Pizarra_Pendientes", id });
 }
 
+function clearPendientes() {
+  if (!datos.pendientes || datos.pendientes.length === 0) {
+    showToast("No hay pendientes para eliminar", "info");
+    return;
+  }
+  showConfirm("🗑️ Eliminar todos los pendientes", `¿Estás seguro de que deseas eliminar TODOS los pendientes (${datos.pendientes.length})? Esta acción no se puede deshacer.`, () => {
+    datos.pendientes = [];
+    renderPendientes();
+    apiPostBg({ action: "clear_sheet", sheet: "Pizarra_Pendientes" });
+    showToast("✓ Todos los pendientes eliminados", "success");
+  });
+}
+
 function editPendienteComentario(id) {
   if (!datos.pendientes) return;
   const item = datos.pendientes.find(m => m.ID === id);
