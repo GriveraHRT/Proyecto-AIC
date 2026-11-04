@@ -64,6 +64,15 @@
     var sb = $("lcSoundToggle"); if (sb) sb.addEventListener("click", Sound.toggle);
   });
 
+  /* @@M1 · Carga inicial ------------------------------------ */
+  onInit(function () {
+    var intro = $("lcIntro"); if (!intro) return;
+    if (root.classList.contains("no-intro") || reduced()) { intro.classList.add("is-done"); return; }
+    var done = function () { intro.classList.add("is-done"); };
+    intro.addEventListener("animationend", function (e) { if (e.target === intro) done(); });
+    setTimeout(done, 1500); // tope duro (el omitir con clic/tecla vive en el <head>)
+  });
+
   /* @@INIT -------------------------------------------------- */
   var run = function () { inits.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } }); };
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", run); else run();

@@ -48,6 +48,37 @@ html[data-look="expresivo"] .lc-logo[data-state="idle"]:hover .px-b2 { animation
 html[data-look="expresivo"] .lc-logo[data-state="idle"]:hover .px-b3 { animation-delay: 400ms; }
 
 /* =========================================================
+   M1 · CARGA INICIAL (CSS puro, determinista, ≤1,5 s)
+   ========================================================= */
+@keyframes lc-intro-out { to { opacity: 0; visibility: hidden; } }
+@keyframes lc-intro-lift { to { transform: translateY(-100%); visibility: hidden; } }
+@keyframes lc-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+/* A · Clínico: 600 ms */
+html[data-look="sobrio"] .lc-intro { animation: lc-intro-out 200ms var(--ease-in) 400ms forwards; }
+html[data-look="sobrio"] .lc-intro-logo { animation: px-scan 300ms steps(8, jump-end) backwards; }
+html[data-look="sobrio"] .lc-intro-word { animation: lc-fade-rise 250ms var(--ease-out) 150ms backwards; }
+
+/* B · Señal: 1 200 ms */
+html[data-look="expresivo"] .lc-intro { animation: lc-intro-lift 220ms cubic-bezier(.7, 0, .3, 1) 1000ms forwards; }
+html[data-look="expresivo"] .lc-intro-logo { animation: px-scan 400ms steps(16, jump-end) backwards; }
+html[data-look="expresivo"] .lc-intro-logo .px-liquid,
+html[data-look="expresivo"] .lc-intro-logo .px-liquid-hi,
+html[data-look="expresivo"] .lc-intro-logo .px-wave-a { animation: px-scan 300ms steps(5, jump-end) 400ms backwards; }
+html[data-look="expresivo"] .lc-intro-logo .px-bubble { animation: px-rise 450ms steps(4, jump-end) 650ms 1 backwards; }
+html[data-look="expresivo"] .lc-intro-logo .px-b2 { animation-delay: 720ms; }
+html[data-look="expresivo"] .lc-intro-logo .px-b3 { animation-delay: 790ms; }
+html[data-look="expresivo"] .lc-intro-logo .px-spark { animation: px-spark 400ms steps(3, jump-end) 800ms 1 backwards; }
+html[data-look="expresivo"] .lc-intro-word { animation: lc-type 400ms steps(10, jump-end) 550ms backwards; }
+html[data-look="expresivo"] .lc-intro-ecg path { stroke-dasharray: 140; animation: lc-ecg-draw 350ms var(--ease-out) 700ms backwards; }
+@keyframes lc-ecg-draw { from { stroke-dashoffset: 140; } to { stroke-dashoffset: 0; } }
+
+/* Velo de carga y skeleton */
+.loading-overlay { animation: lc-fade var(--dur-2) var(--ease-out); }
+@keyframes lc-shimmer { from { background-position: 100% 0; } to { background-position: -50% 0; } }
+#diasContainer:empty { animation: lc-shimmer 1.2s linear infinite; }
+
+/* =========================================================
    P5 · prefers-reduced-motion
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {
