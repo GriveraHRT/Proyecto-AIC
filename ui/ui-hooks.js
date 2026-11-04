@@ -248,6 +248,26 @@
     if (a[1] === "error" && /conexi|^Error/i.test(String(a[0]))) Status.error("Error al guardar");
   });
 
+  /* @@M6 · Cambio de tema ----------------------------------- */
+  wrap("toggleTheme", function (orig, a) {
+    var self = this, btn = doc.querySelector(".theme-toggle");
+    var run = function () { orig.apply(self, a); };
+    if (reduced()) { run(); return; }
+    if (doc.startViewTransition) {
+      if (btn) {
+        var r = btn.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+        root.style.setProperty("--vt-x", x + "px");
+        root.style.setProperty("--vt-y", y + "px");
+        root.style.setProperty("--vt-r", Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + "px");
+      }
+      doc.startViewTransition(run);
+    } else {
+      root.classList.add("lc-theme-anim");
+      run();
+      setTimeout(function () { root.classList.remove("lc-theme-anim"); }, 200);
+    }
+  });
+
   /* @@INIT -------------------------------------------------- */
   var run = function () { inits.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } }); };
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", run); else run();

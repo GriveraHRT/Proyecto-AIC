@@ -170,6 +170,20 @@ html[data-look="expresivo"] .lc-status[data-state="error"] { animation: lc-shake
 .lc-status-text { transition: color var(--dur-2); }
 
 /* =========================================================
+   M6 · CAMBIO DE TEMA
+   ========================================================= */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; animation-timing-function: ease-out; }
+html[data-look="expresivo"]::view-transition-old(root) { animation: none; }
+html[data-look="expresivo"]::view-transition-new(root) { animation: lc-reveal 450ms var(--ease-out); }
+@keyframes lc-reveal {
+  from { clip-path: circle(0 at var(--vt-x, 100%) var(--vt-y, 0)); }
+  to { clip-path: circle(var(--vt-r, 150%) at var(--vt-x, 100%) var(--vt-y, 0)); }
+}
+html.lc-theme-anim, html.lc-theme-anim *, html.lc-theme-anim *::before, html.lc-theme-anim *::after {
+  transition: background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out, fill 150ms ease-out !important;
+}
+
+/* =========================================================
    P5 · prefers-reduced-motion
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {
