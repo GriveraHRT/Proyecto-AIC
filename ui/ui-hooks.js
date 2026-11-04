@@ -212,6 +212,42 @@
     return r;
   });
 
+  /* @@M5 · Chip de sincronización --------------------------- */
+  var Status = (function () {
+    var savedTimer = null, state = "ok";
+    var LABEL = { ok: "Sincronizado", saving: "Guardando…", saved: "Guardado", error: "Sin conexión" };
+    function set(s, label) {
+      var chip = $("lcStatus"), text = $("lcStatusText"), logo = $("lcLogo");
+      if (!chip) return;
+      state = s;
+      chip.setAttribute("data-state", s);
+      text.textContent = label || LABEL[s];
+      chip.title = label || LABEL[s];
+      // El matraz pixel-art del logo acompaña el estado
+      if (logo) logo.setAttribute("data-state", s === "saving" ? "working" : s === "saved" ? "done" : s === "error" ? "error" : "idle");
+    }
+    function beat() {
+      if (look() !== "expresivo" || state !== "ok" || reduced()) return;
+      restartClass($("lcStatus"), "is-beat", 700);
+    }
+    return {
+      saving: function () { clearTimeout(savedTimer); set("saving"); },
+      saved: function () {
+        clearTimeout(savedTimer); set("saved");
+        savedTimer = setTimeout(function () { if (state === "saved") set("ok"); }, 1500);
+      },
+      ok: function () { if (state === "saving" || state === "saved") return; var was = state; set("ok"); if (was === "ok") beat(); },
+      error: function (label) { clearTimeout(savedTimer); set("error", label); }
+    };
+  })();
+  wrap("showSaving", function (orig, a) { orig.apply(this, a); Status.saving(); });
+  wrap("hideSaving", function (orig, a) { orig.apply(this, a); Status.saved(); });
+  wrap("setSyncStatus", function (orig, a) { orig.apply(this, a); if (a[0] === "ok") Status.ok(); else Status.error("Sin conexión"); });
+  wrap("showToast", function (orig, a) {
+    orig.apply(this, a);
+    if (a[1] === "error" && /conexi|^Error/i.test(String(a[0]))) Status.error("Error al guardar");
+  });
+
   /* @@INIT -------------------------------------------------- */
   var run = function () { inits.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } }); };
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", run); else run();

@@ -153,6 +153,23 @@ html[data-look="expresivo"] .lc-toast { animation: lc-toast-in 240ms var(--ease-
 @keyframes lc-modal-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
 
 /* =========================================================
+   M5 · CHIP DE SINCRONIZACIÓN
+   ========================================================= */
+.lc-st-saving .arc { transform-box: view-box; transform-origin: 8px 8px; }
+.lc-status[data-state="saving"] .lc-st-saving .arc { animation: lc-spin 900ms linear infinite; }
+@keyframes lc-eq { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+.lc-status[data-state="saving"] .lc-st-bars rect { animation: lc-eq 800ms ease-in-out infinite; }
+.lc-status[data-state="saving"] .lc-st-bars rect:nth-child(2) { animation-delay: -270ms; }
+.lc-status[data-state="saving"] .lc-st-bars rect:nth-child(3) { animation-delay: -540ms; }
+.lc-st-saved path { stroke-dasharray: 14; }
+.lc-status[data-state="saved"] .lc-st-saved path { animation: lc-draw-14 240ms var(--ease-out) 60ms backwards; }
+html[data-look="expresivo"] .lc-status[data-state="saved"] { animation: lc-pop 300ms var(--ease-out); }
+html[data-look="expresivo"] .lc-status[data-state="error"] { animation: lc-shake 300ms var(--ease-out); }
+@keyframes lc-ecg { from { stroke-dashoffset: 60; } to { stroke-dashoffset: 0; } }
+.lc-status.is-beat .lc-ecg { animation: lc-ecg 600ms var(--ease-out) forwards; }
+.lc-status-text { transition: color var(--dur-2); }
+
+/* =========================================================
    P5 · prefers-reduced-motion
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {
