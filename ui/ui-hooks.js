@@ -268,6 +268,51 @@
     }
   });
 
+  /* @@M7 · Estadísticas ------------------------------------- */
+  // Cada render incrementa statsGen: un conteo en curso se cancela si los
+  // datos se re-renderizan (polling), para nunca escribir un valor viejo.
+  var statsGen = 0, statsAnimatePending = false;
+  function countUp(el, to, dur) {
+    var gen = statsGen, t0 = performance.now();
+    var step = function (t) {
+      if (gen !== statsGen) return;
+      var k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = Math.round(to * e);
+      if (k < 1) requestAnimationFrame(step); else el.textContent = to;
+    };
+    el.textContent = "0";
+    requestAnimationFrame(step);
+  }
+  function animateStats() {
+    if (reduced() || !Element.prototype.animate) return;
+    var exp = look() === "expresivo";
+    ["statTotal", "statAgregados", "statEliminados"].forEach(function (id) {
+      var el = $(id); if (!el) return;
+      var v = parseInt(el.textContent, 10) || 0;
+      if (exp) countUp(el, v, 700);
+      else el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" });
+    });
+    ["statsTopUsuarios", "statsTopExAgregados", "statsTopExEliminados"].forEach(function (id) {
+      var c = $(id); if (!c) return;
+      c.querySelectorAll(".lc-bar-fill").forEach(function (b, i) {
+        b.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], {
+          duration: exp ? 600 : 300, delay: i * (exp ? 30 : 20),
+          easing: exp ? "cubic-bezier(.16,1,.3,1)" : "cubic-bezier(.2,0,0,1)", fill: "backwards"
+        });
+      });
+    });
+  }
+  wrap("switchTab", function (orig, a) { if (a[0] === "stats") statsAnimatePending = true; return orig.apply(this, a); });
+  wrap("changeStatsRange", function (orig, a) { statsAnimatePending = true; return orig.apply(this, a); });
+  wrap("renderStats", function (orig, a) {
+    statsGen++;
+    var r = orig.apply(this, a);
+    var visible = $("panel-stats") && $("panel-stats").classList.contains("active");
+    // Solo tras acción del usuario y con datos reales (no se anima por el polling)
+    if (statsAnimatePending && visible && dataLoaded) { statsAnimatePending = false; animateStats(); }
+    return r;
+  });
+
   /* @@INIT -------------------------------------------------- */
   var run = function () { inits.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } }); };
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", run); else run();
