@@ -114,6 +114,45 @@ html[data-look="expresivo"] .lc-exam-box--bad.is-flash { animation: lc-ring-bad 
 html[data-look="expresivo"] .exam-pill.is-dup { animation: lc-shake 240ms var(--ease-out); }
 
 /* =========================================================
+   M4 · GUARDAR REGISTRO + TOASTS
+   ========================================================= */
+.lc-save { position: relative; }
+.lc-save-label, .lc-save-done { display: inline-flex; align-items: center; gap: 6px; transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-2) var(--ease-out); }
+.lc-save-done { position: absolute; inset: 0; justify-content: center; opacity: 0; }
+.lc-draw path { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.lc-save.is-success { background: var(--ok-solid) !important; color: #fff !important; }
+.lc-save.is-success .lc-save-label { opacity: 0; }
+.lc-save.is-success .lc-save-done { opacity: 1; }
+.lc-save.is-success .lc-draw path { animation: lc-draw 200ms var(--ease-out) 60ms backwards; }
+html[data-look="expresivo"] .lc-save-done { transform: translateY(10px); }
+html[data-look="expresivo"] .lc-save.is-success .lc-save-label { transform: translateY(-10px); }
+html[data-look="expresivo"] .lc-save.is-success .lc-save-done { transform: none; }
+html[data-look="expresivo"] .lc-save.is-success { animation: lc-ring-save 450ms var(--ease-out); }
+@keyframes lc-ring-save { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } to { box-shadow: 0 0 0 14px transparent; } }
+.is-shake { animation: lc-shake 200ms var(--ease-out); }
+html[data-look="expresivo"] .is-shake { animation-duration: 280ms; }
+.lc-invalid-fade { transition: border-color 600ms var(--ease-out), box-shadow 600ms var(--ease-out); }
+
+@keyframes lc-fresh { from { background-color: var(--ok-line); } to { background-color: var(--ok-soft); } }
+@keyframes lc-fresh-bad { from { background-color: var(--bad-line); } to { background-color: var(--bad-soft); } }
+@keyframes lc-slide-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+.lc-row--ok.is-fresh { animation: lc-fresh 1200ms var(--ease-out); }
+.lc-row--bad.is-fresh { animation: lc-fresh-bad 1200ms var(--ease-out); }
+html[data-look="expresivo"] .lc-row--ok.is-fresh { animation: lc-slide-in 240ms var(--ease-out) backwards, lc-fresh 1200ms var(--ease-out); }
+html[data-look="expresivo"] .lc-row--bad.is-fresh { animation: lc-slide-in 240ms var(--ease-out) backwards, lc-fresh-bad 1200ms var(--ease-out); }
+
+@keyframes lc-toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes lc-toast-out { to { opacity: 0; transform: translateY(4px); } }
+.lc-toast { animation: lc-toast-in 180ms var(--ease-out) backwards; }
+html[data-look="expresivo"] .lc-toast { animation: lc-toast-in 240ms var(--ease-spring) backwards; }
+.lc-toast.is-out { animation: lc-toast-out 150ms var(--ease-in) forwards; }
+.alert-item { animation: lc-toast-in 240ms var(--ease-out) backwards; }
+
+.modal-backdrop { animation: lc-fade 150ms var(--ease-out); }
+.modal-content { animation: lc-modal-in 180ms var(--ease-out); }
+@keyframes lc-modal-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+
+/* =========================================================
    P5 · prefers-reduced-motion
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {

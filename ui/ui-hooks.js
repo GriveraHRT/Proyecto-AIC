@@ -154,6 +154,64 @@
     return r;
   });
 
+  /* @@M4 · Guardar registro + toasts ------------------------ */
+  wrap("showToast", function (orig, a) {
+    orig.apply(this, a);
+    var msg = String(a[0] || ""), type = a[1] || "info";
+    var box = $("lcToasts"); if (!box) return;
+    var el = doc.createElement("div");
+    el.className = "lc-toast lc-toast--" + type;
+    el.setAttribute("role", type === "error" ? "alert" : "status");
+    el.innerHTML = ICON(type === "success" ? "check" : type === "error" ? "alert" : "info") + "<span></span>";
+    el.querySelector("span").textContent = msg.replace(/^✓\s*/, "");
+    var close = function () {
+      if (el.classList.contains("is-out")) return;
+      el.classList.add("is-out");
+      setTimeout(function () { el.remove(); }, reduced() ? 0 : 160);
+    };
+    el.onclick = close;
+    box.appendChild(el);
+    while (box.children.length > 3) box.firstElementChild.remove();
+    setTimeout(close, type === "error" ? 4500 : 3000);
+    if (type === "error") Sound.play("error");
+  });
+  function flagInvalid(el) {
+    if (!el) return;
+    el.classList.add("lc-invalid");
+    setTimeout(function () { el.classList.add("lc-invalid-fade"); el.classList.remove("lc-invalid"); }, 900);
+    setTimeout(function () { el.classList.remove("lc-invalid-fade"); }, 1600);
+  }
+  wrap("submitError", function (orig, a) {
+    // datos / examenes* son `let` globales de app.js (no cuelgan de window)
+    var before = 0, noExams = false;
+    try { before = datos.errores.length; noExams = !examenesAgregados.length && !examenesEliminados.length; } catch (e) { }
+    var emptyDia = !$("errDia").value, emptyPet = !$("errPeticion").value.trim(), emptyUsr = !$("errUsuario").value.trim();
+    var r = orig.apply(this, a);
+    var after = before;
+    try { after = datos.errores.length; } catch (e) { }
+    var btn = $("lcSaveBtn");
+    if (after > before) {
+      restartClass(btn, "is-success", 750);
+      Sound.play("ok");
+      for (var i = before; i < after; i++) {
+        var row = doc.querySelector('#diasContainer [data-idx="' + i + '"]');
+        if (!row) continue;
+        if (look() === "expresivo") row.style.animationDelay = ((i - before) * 40) + "ms, 0ms";
+        row.classList.add("is-fresh");
+      }
+    } else {
+      restartClass(btn, "is-shake", 320);
+      if (emptyDia || emptyPet || emptyUsr) {
+        if (emptyDia) flagInvalid($("errDia"));
+        if (emptyPet) flagInvalid($("errPeticion"));
+        if (emptyUsr) flagInvalid($("errUsuario"));
+      } else if (noExams) {
+        flagInvalid($("boxAgregados")); flagInvalid($("boxEliminados"));
+      }
+    }
+    return r;
+  });
+
   /* @@INIT -------------------------------------------------- */
   var run = function () { inits.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } }); };
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", run); else run();
