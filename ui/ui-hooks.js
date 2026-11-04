@@ -110,6 +110,50 @@
     if (h && h !== "errores" && $("panel-" + h) && typeof switchTab === "function") switchTab(h);
   });
 
+  /* @@M3 · Añadir / quitar examen --------------------------- */
+  var pillName = function (el) { return el.firstChild ? el.firstChild.textContent.trim() : el.textContent.trim(); };
+  wrap("renderExamPills", function (orig, a) {
+    var cont = $(a[0]), before = {};
+    if (cont) cont.querySelectorAll(".exam-pill").forEach(function (p) {
+      before[pillName(p)] = { el: p, left: p.offsetLeft, top: p.offsetTop };
+    });
+    var r = orig.apply(this, a);
+    if (!cont) return r;
+    var now = {}, added = 0;
+    cont.querySelectorAll(".exam-pill").forEach(function (p) {
+      var n = pillName(p); now[n] = 1;
+      if (!before[n]) { p.classList.add("is-new"); added++; }
+    });
+    if (!reduced()) Object.keys(before).forEach(function (n) {
+      if (now[n]) return;
+      // "fantasma": la lista real ya se actualizó; esto solo decora la salida
+      var g = before[n].el.cloneNode(true);
+      g.classList.add("lc-ghost"); g.classList.remove("is-new");
+      g.style.left = before[n].left + "px"; g.style.top = before[n].top + "px";
+      g.setAttribute("aria-hidden", "true");
+      g.querySelectorAll("button").forEach(function (b) { b.remove(); });
+      cont.appendChild(g);
+      setTimeout(function () { g.remove(); }, 220);
+    });
+    if (added) { restartClass(cont.closest(".lc-exam-box"), "is-flash", 450); Sound.play("tick"); }
+    return r;
+  });
+  var dupFlag = false;
+  wrap("showToast", function (orig, a) { if (/Ya está en la lista/.test(a[0])) dupFlag = true; return orig.apply(this, a); });
+  wrap("addExamFromFuzzy", function (orig, a) {
+    var tipo = a[0], inp = $(tipo === "agregar" ? "fuzzyAgregar" : "fuzzyEliminar");
+    var val = inp ? inp.value.trim().toUpperCase() : "";
+    dupFlag = false;
+    var r = orig.apply(this, a);
+    if (val && dupFlag) {
+      var lista = typeof getExamenes === "function" ? getExamenes() : [];
+      var final = lista.find(function (e) { return e === val; }) || lista.find(function (e) { return e.indexOf(val) === 0; }) || val;
+      var cont = $(tipo === "agregar" ? "listaAgregados" : "listaEliminados");
+      if (cont) cont.querySelectorAll(".exam-pill").forEach(function (p) { if (pillName(p) === final) restartClass(p, "is-dup", 500); });
+    }
+    return r;
+  });
+
   /* @@INIT -------------------------------------------------- */
   var run = function () { inits.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } }); };
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", run); else run();

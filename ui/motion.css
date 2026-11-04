@@ -95,6 +95,25 @@ html[data-look="expresivo"] .module-panel.active > :nth-child(n+5) { animation-d
 html[data-look="expresivo"] .nav-tab.is-entering .ic { animation: lc-trace 320ms var(--ease-out); }
 
 /* =========================================================
+   M3 · AÑADIR / QUITAR EXAMEN
+   ========================================================= */
+@keyframes lc-pill-in { from { opacity: 0; transform: scale(var(--pill-from)); } to { opacity: 1; transform: none; } }
+@keyframes lc-pill-out-a { to { opacity: 0; transform: scale(.85); } }
+@keyframes lc-pill-out-b { to { opacity: 0; transform: translateY(6px) scale(.9); } }
+@keyframes lc-ring-ok { from { box-shadow: 0 0 0 0 var(--ok-line); } to { box-shadow: 0 0 0 6px transparent; } }
+@keyframes lc-ring-bad { from { box-shadow: 0 0 0 0 var(--bad-line); } to { box-shadow: 0 0 0 6px transparent; } }
+@keyframes lc-ring-blink { 0%, 100% { box-shadow: inset 0 0 0 1px currentColor; } 50% { box-shadow: inset 0 0 0 2px currentColor; } }
+
+.exam-pill.is-new { animation: lc-pill-in 140ms var(--ease-out) backwards; }
+html[data-look="expresivo"] .exam-pill.is-new { animation: lc-pill-in 260ms var(--ease-spring) backwards; }
+.lc-ghost { position: absolute; margin: 0 !important; pointer-events: none; z-index: 2; animation: lc-pill-out-a 120ms var(--ease-in) forwards; }
+html[data-look="expresivo"] .lc-ghost { animation: lc-pill-out-b 180ms var(--ease-in) forwards; }
+html[data-look="expresivo"] .lc-exam-box--ok.is-flash { animation: lc-ring-ok 400ms var(--ease-out); }
+html[data-look="expresivo"] .lc-exam-box--bad.is-flash { animation: lc-ring-bad 400ms var(--ease-out); }
+.exam-pill.is-dup { animation: lc-ring-blink 200ms linear 2; }
+html[data-look="expresivo"] .exam-pill.is-dup { animation: lc-shake 240ms var(--ease-out); }
+
+/* =========================================================
    P5 · prefers-reduced-motion
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {
