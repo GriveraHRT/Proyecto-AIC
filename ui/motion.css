@@ -79,6 +79,22 @@ html[data-look="expresivo"] .lc-intro-ecg path { stroke-dasharray: 140; animatio
 #diasContainer:empty { animation: lc-shimmer 1.2s linear infinite; }
 
 /* =========================================================
+   M2 · CAMBIO DE PESTAÑA
+   ========================================================= */
+.lc-tab-ind { transition: transform var(--dur-2) var(--ease-spring), width var(--dur-2) var(--ease-spring); }
+.lc-tab-ind.no-anim { transition: none; }
+/* "backwards": al terminar no queda transform → no crea stacking contexts
+   que tapen los desplegables */
+html[data-look="sobrio"] .module-panel.active { animation: lc-fade-rise 160ms var(--ease-out) backwards; }
+html[data-look="expresivo"] .module-panel.active > * { animation: lc-fade-rise 280ms var(--ease-out) backwards; }
+html[data-look="expresivo"] .module-panel.active > :nth-child(2) { animation-delay: 30ms; }
+html[data-look="expresivo"] .module-panel.active > :nth-child(3) { animation-delay: 60ms; }
+html[data-look="expresivo"] .module-panel.active > :nth-child(4) { animation-delay: 90ms; }
+html[data-look="expresivo"] .module-panel.active > :nth-child(n+5) { animation-delay: 120ms; }
+@keyframes lc-trace { from { stroke-dasharray: 120; stroke-dashoffset: 120; } to { stroke-dasharray: 120; stroke-dashoffset: 0; } }
+html[data-look="expresivo"] .nav-tab.is-entering .ic { animation: lc-trace 320ms var(--ease-out); }
+
+/* =========================================================
    P5 · prefers-reduced-motion
    ========================================================= */
 @media (prefers-reduced-motion: reduce) {

@@ -73,6 +73,43 @@
     setTimeout(done, 1500); // tope duro (el omitir con clic/tecla vive en el <head>)
   });
 
+  /* @@M2 · Cambio de pestaña -------------------------------- */
+  var Tabs = (function () {
+    var nav, ind;
+    function place(animate) {
+      nav = nav || $("lcTabs"); if (!nav) return;
+      var act = nav.querySelector(".nav-tab.active"); if (!act) return;
+      if (!ind) { ind = doc.createElement("span"); ind.className = "lc-tab-ind"; nav.prepend(ind); nav.classList.add("has-ind"); }
+      ind.classList.toggle("no-anim", !animate);
+      ind.style.width = act.offsetWidth + "px";
+      ind.style.height = act.offsetHeight + "px";
+      ind.style.transform = "translateX(" + act.offsetLeft + "px)";
+      nav.classList.toggle("is-overflow", nav.scrollWidth > nav.clientWidth + 2);
+      if (nav.scrollWidth > nav.clientWidth) {
+        var target = act.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
+        nav.scrollTo({ left: target, behavior: animate && !reduced() ? "smooth" : "auto" });
+      }
+    }
+    return { place: place };
+  })();
+  wrap("switchTab", function (orig, a) {
+    var id = a[0], prev = doc.querySelector(".nav-tab.active");
+    var r = orig.apply(this, a);
+    var tab = doc.querySelector('.nav-tab[data-tab="' + id + '"]');
+    Tabs.place(true);
+    if (tab && tab !== prev) restartClass(tab, "is-entering", 400);
+    try { history.replaceState(null, "", location.pathname + location.search + "#" + id); } catch (e) { }
+    return r;
+  });
+  onInit(function () {
+    Tabs.place(false);
+    var rT; window.addEventListener("resize", function () { clearTimeout(rT); rT = setTimeout(function () { Tabs.place(false); }, 100); });
+    if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(function () { Tabs.place(false); });
+    // Abrir pestaña desde el hash (#pizarra, #stats…): útil para enlaces y pruebas
+    var h = location.hash.replace("#", "");
+    if (h && h !== "errores" && $("panel-" + h) && typeof switchTab === "function") switchTab(h);
+  });
+
   /* @@INIT -------------------------------------------------- */
   var run = function () { inits.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } }); };
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", run); else run();
