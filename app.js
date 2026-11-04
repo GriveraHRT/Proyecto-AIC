@@ -18,7 +18,7 @@ const ESTADOS_CENTRO = [
   { value: "NO REVISADO :(", label: "NO REVISADO :(", css: "st-no-revisado" },
   { value: "REVISADO :)", label: "REVISADO :)", css: "st-revisado" },
   { value: "EN PROCESO", label: "EN PROCESO", css: "st-en-proceso" },
-  { value: "TODO VALIDADO", label: "🔥 TODO VALIDADO", css: "st-todo-validado" },
+  { value: "TODO VALIDADO", label: "★ TODO VALIDADO", css: "st-todo-validado" },
   { value: "NO LLEGÓ", label: "NO LLEGÓ", css: "st-no-llego" }
 ];
 
@@ -79,7 +79,7 @@ function loadTheme() {
 }
 function updateThemeLabel(theme) {
   const lbl = document.getElementById("themeLabel");
-  if (lbl) lbl.textContent = theme === "dark" ? "🌙 Modo oscuro" : "☀️ Modo claro";
+  if (lbl) lbl.textContent = theme === "dark" ? "Modo oscuro" : "Modo claro";
 }
 
 // ===================== TABS =====================
@@ -345,7 +345,7 @@ function poblarMuestraExamenes() {
     while (selP.options.length > 1) selP.remove(1);
     const oCustom = document.createElement("option");
     oCustom.value = "__custom__";
-    oCustom.textContent = "✏️ Escribir otro examen...";
+    oCustom.textContent = "✎ Escribir otro examen…";
     selP.appendChild(oCustom);
     l.forEach(e => { const o = document.createElement("option"); o.value = e; o.textContent = e; selP.appendChild(o); });
     selP.value = cvP;
@@ -354,7 +354,7 @@ function poblarMuestraExamenes() {
 
 // ===================== ERRORES =====================
 function removeExamFromList(t, ex) { const a = t === "agregar" ? examenesAgregados : examenesEliminados; const i = a.indexOf(ex); if (i > -1) a.splice(i, 1); renderExamPills(t === "agregar" ? "listaAgregados" : "listaEliminados", a, t); }
-function renderExamPills(id, arr, t) { document.getElementById(id).innerHTML = arr.map(ex => `<span class="exam-pill ${t === 'eliminar' ? 'exam-pill-red' : ''}">${ex}<button onclick="removeExamFromList('${t}','${ex}')" style="cursor:pointer;margin-left:2px;opacity:.7;">✕</button></span>`).join(""); }
+function renderExamPills(id, arr, t) { document.getElementById(id).innerHTML = arr.map(ex => `<span class="exam-pill ${t === 'eliminar' ? 'exam-pill-red' : ''}">${ex}<button onclick="removeExamFromList('${t}','${ex}')" title="Quitar" aria-label="Quitar ${ex}"><svg class="ic"><use href="#i-x"/></svg></button></span>`).join(""); }
 
 function submitError() {
   const dia = document.getElementById("errDia").value, pet = document.getElementById("errPeticion").value.trim(), usr = document.getElementById("errUsuario").value.trim().toLowerCase();
@@ -363,7 +363,7 @@ function submitError() {
   const fecha = fechaHoy();
   examenesAgregados.forEach(ex => { datos.errores.push({ Fecha: fecha, "Día": dia, "Acción": "AGREGADO", "N° Petición": pet, Examen: ex, Usuario: usr }); apiPostBg({ action: "insert", sheet: "Errores", row: [fecha, dia, "AGREGADO", pet, ex, usr] }); });
   examenesEliminados.forEach(ex => { datos.errores.push({ Fecha: fecha, "Día": dia, "Acción": "ELIMINADO", "N° Petición": pet, Examen: ex, Usuario: usr }); apiPostBg({ action: "insert", sheet: "Errores", row: [fecha, dia, "ELIMINADO", pet, ex, usr] }); });
-  renderErrores(); document.getElementById("errPeticion").value = ""; examenesAgregados = []; examenesEliminados = []; document.getElementById("listaAgregados").innerHTML = ""; document.getElementById("listaEliminados").innerHTML = ""; showToast("✓ Guardado", "success");
+  renderErrores(); document.getElementById("errPeticion").value = ""; examenesAgregados = []; examenesEliminados = []; document.getElementById("listaAgregados").innerHTML = ""; document.getElementById("listaEliminados").innerHTML = ""; showToast("Registro guardado", "success");
 }
 
 function deleteError(idx) {
@@ -392,11 +392,12 @@ function renderErrores() {
     const ag = del.filter(e => (e["Acción"] || e["Acci\u00f3n"]) === "AGREGADO");
     const el = del.filter(e => (e["Acción"] || e["Acci\u00f3n"]) === "ELIMINADO");
     const findIdx = (item) => datos.errores.indexOf(item);
-    return `<div class="glass-card overflow-hidden"><div class="px-2.5 py-2" style="border-bottom:1px solid var(--border);background:var(--bg-input);"><h3 class="text-xs font-bold">${dia}</h3><span class="text-[9px]" style="color:var(--text-dim);">${del.length} reg.</span></div>
-    <div class="p-2" style="border-bottom:1px solid var(--border);"><div class="flex items-center gap-1 mb-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#22c55e;"></span><span class="text-[9px] font-bold uppercase" style="color:var(--green-text);">Agregados (${ag.length})</span></div>
-    ${ag.length === 0 ? '<p class="text-[9px] italic" style="color:var(--text-dim);">—</p>' : ag.map(e => `<div class="flex items-center justify-between py-0.5 px-1 rounded mb-0.5" style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);"><div><span class="text-[9px] font-mono" style="color:var(--text);">#${e["N° Petición"] || ""}</span> <span class="exam-pill ml-0.5">${e.Examen || ""}</span></div><div class="flex items-center gap-1"><span class="text-[8px]" style="color:var(--text-dim);">${e.Usuario || ""}</span><button onclick="deleteError(${findIdx(e)})" class="text-[8px]" style="color:var(--red-text);cursor:pointer;" title="Eliminar">🗑</button></div></div>`).join("")}
-    </div><div class="p-2"><div class="flex items-center gap-1 mb-1"><span class="w-1.5 h-1.5 rounded-full" style="background:#ef4444;"></span><span class="text-[9px] font-bold uppercase" style="color:var(--red-text);">Eliminados (${el.length})</span></div>
-    ${el.length === 0 ? '<p class="text-[9px] italic" style="color:var(--text-dim);">—</p>' : el.map(e => `<div class="flex items-center justify-between py-0.5 px-1 rounded mb-0.5" style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.15);"><div><span class="text-[9px] font-mono" style="color:var(--text);">#${e["N° Petición"] || ""}</span> <span class="exam-pill exam-pill-red ml-0.5">${e.Examen || ""}</span></div><div class="flex items-center gap-1"><span class="text-[8px]" style="color:var(--text-dim);">${e.Usuario || ""}</span><button onclick="deleteError(${findIdx(e)})" class="text-[8px]" style="color:var(--red-text);cursor:pointer;" title="Eliminar">🗑</button></div></div>`).join("")}
+    const row = (e, tone) => `<div class="lc-row lc-row--${tone}" data-idx="${findIdx(e)}"><div class="lc-row-main"><span class="lc-pet">#${e["N° Petición"] || ""}</span><span class="exam-pill ${tone === 'bad' ? 'exam-pill-red' : ''}">${e.Examen || ""}</span></div><div class="lc-row-meta"><span class="lc-user" title="${e.Usuario || ""}">${e.Usuario || ""}</span><button onclick="deleteError(${findIdx(e)})" class="lc-del" title="Eliminar registro" aria-label="Eliminar registro"><svg class="ic"><use href="#i-trash"/></svg></button></div></div>`;
+    return `<div class="glass-card lc-day"><div class="lc-day-head"><h3>${dia}</h3><span>${del.length} reg.</span></div>
+    <div class="lc-day-sec lc-day-sec--ok"><div class="lc-day-sec-title"><i></i>Agregados (${ag.length})</div>
+    ${ag.length === 0 ? '<p class="lc-empty">—</p>' : ag.map(e => row(e, "ok")).join("")}
+    </div><div class="lc-day-sec lc-day-sec--bad"><div class="lc-day-sec-title"><i></i>Eliminados (${el.length})</div>
+    ${el.length === 0 ? '<p class="lc-empty">—</p>' : el.map(e => row(e, "bad")).join("")}
     </div></div>`;
   }).join("");
 }
@@ -422,7 +423,7 @@ function addMuestra() {
   apiPostBg({ action: "insert", sheet: "Pizarra_Muestras", row: [id, t, p, e, "No", fecha] });
   document.getElementById("muestraPeticion").value = "";
   document.getElementById("muestraExamen").value = "";
-  showToast("✓ Muestra", "success");
+  showToast("Muestra agregada", "success");
 }
 function deleteMuestra(id) { datos.muestras = datos.muestras.filter(m => m.ID !== id); renderMuestras(); apiPostBg({ action: "delete", sheet: "Pizarra_Muestras", id }); }
 function toggleMuestraAlmacenada(id, val) {
@@ -439,21 +440,21 @@ function renderMuestras() {
   const mk = (arr, tbId) => {
     const sorted = sortByDate([...arr]);
     document.getElementById(tbId).innerHTML = sorted.length === 0
-      ? `<tr><td colspan="5" class="px-2 py-2.5 text-center text-[9px] italic" style="color:var(--text-dim);">Sin muestras</td></tr>`
+      ? `<tr><td colspan="5" class="text-center italic">Sin muestras</td></tr>`
       : sorted.map(m => {
         const alm = m.Almacenada === "Sí" || m.Almacenada === "Si";
         const cls = alm ? "st-revisado" : "st-no-revisado";
-        return `<tr class="row-hover" style="border-bottom:1px solid var(--border);">
+        return `<tr class="row-hover">
           <td class="px-2 py-1 text-[8px]" style="color:var(--text-dim);">${formatFecha(m.Fecha)}</td>
           <td class="px-2 py-1 font-mono text-xs">${m["N° Petición"] || ""}</td>
           <td class="px-2 py-1"><span class="exam-pill">${m.Examen || ""}</span></td>
           <td class="px-2 py-1 text-center">
-            <select onchange="toggleMuestraAlmacenada('${m.ID}',this.value)" class="${cls}" style="font-size:.6rem;font-weight:700;padding:.15rem .4rem;border-radius:9999px;cursor:pointer;background:transparent;">
-              <option value="No" ${!alm ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">❌ No</option>
-              <option value="Sí" ${alm ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">✅ Sí</option>
+            <select onchange="toggleMuestraAlmacenada('${m.ID}',this.value)" class="lc-state ${cls}">
+              <option value="No" ${!alm ? 'selected' : ''}>✕ No</option>
+              <option value="Sí" ${alm ? 'selected' : ''}>✓ Sí</option>
             </select>
           </td>
-          <td class="px-1"><button onclick="deleteMuestra('${m.ID}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">✕</button></td>
+          <td class="px-1"><button onclick="deleteMuestra('${m.ID}')" class="lc-del" title="Eliminar" aria-label="Eliminar"><svg class="ic"><use href="#i-x"/></svg></button></td>
         </tr>`;
       }).join("");
   };
@@ -505,7 +506,7 @@ function renderPendienteExamenPills() {
   cont.innerHTML = examenesPendientes.map(ex => `
     <span class="exam-pill font-medium">
       ${esc(ex)}
-      <button type="button" onclick="removePendienteExamenPill('${escA(ex)}')" style="cursor:pointer;margin-left:3px;opacity:.7;" title="Quitar examen">✕</button>
+      <button type="button" onclick="removePendienteExamenPill('${escA(ex)}')" title="Quitar examen" aria-label="Quitar examen"><svg class="ic"><use href="#i-x"/></svg></button>
     </span>
   `).join("");
 }
@@ -585,7 +586,7 @@ function addPendiente() {
   renderPendienteExamenPills();
 
   document.getElementById("pendientePeticion").focus();
-  showToast("✓ Pendiente registrado", "success");
+  showToast("Pendiente registrado", "success");
 }
 
 function togglePendienteProcesada(id, val) {
@@ -608,11 +609,11 @@ function clearPendientes() {
     showToast("No hay pendientes para eliminar", "info");
     return;
   }
-  showConfirm("🗑️ Eliminar todos los pendientes", `¿Estás seguro de que deseas eliminar TODOS los pendientes (${datos.pendientes.length})? Esta acción no se puede deshacer.`, () => {
+  showConfirm("Eliminar todos los pendientes", `Se borrarán ${datos.pendientes.length} pendientes. No se puede deshacer.`, () => {
     datos.pendientes = [];
     renderPendientes();
     apiPostBg({ action: "clear_sheet", sheet: "Pizarra_Pendientes" });
-    showToast("✓ Todos los pendientes eliminados", "success");
+    showToast("Pendientes eliminados", "success");
   });
 }
 
@@ -625,7 +626,7 @@ function editPendienteComentario(id) {
     item.Comentario = nuevo.trim();
     renderPendientes();
     apiPostBg({ action: "update", sheet: "Pizarra_Pendientes", id, updates: { Comentario: nuevo.trim() } });
-    showToast("✓ Comentario actualizado", "success");
+    showToast("Comentario actualizado", "success");
   }
 }
 
@@ -645,12 +646,10 @@ function renderPendientes() {
       badge.style.display = "inline-block";
       if (noProcCount > 0) {
         badge.textContent = `${noProcCount} pendiente${noProcCount > 1 ? 's' : ''}`;
-        badge.style.background = "rgba(239,68,68,0.15)";
-        badge.style.color = "#f87171";
+        badge.dataset.tone = "bad";
       } else {
         badge.textContent = "✓ Al día";
-        badge.style.background = "rgba(16,185,129,0.15)";
-        badge.style.color = "#34d399";
+        badge.dataset.tone = "ok";
       }
     } else {
       badge.style.display = "none";
@@ -658,7 +657,7 @@ function renderPendientes() {
   }
 
   if (sorted.length === 0) {
-    tb.innerHTML = `<tr><td colspan="6" class="px-2 py-3 text-center text-[10px] italic" style="color:var(--text-dim);">Sin pendientes del día</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="6" class="text-center italic">Sin pendientes del día</td></tr>`;
     return;
   }
 
@@ -677,20 +676,20 @@ function renderPendientes() {
     const comText = m.Comentario || "";
     const comentarioHtml = comText
       ? `<span class="text-[10px] italic max-w-[150px] inline-block truncate cursor-pointer hover:underline" style="color:var(--text);" onclick="editPendienteComentario('${m.ID}')" title="${escA(comText)} (Clic para editar)">${esc(comText)}</span>`
-      : `<button type="button" onclick="editPendienteComentario('${m.ID}')" class="text-[9px] hover:underline" style="color:var(--text-dim);cursor:pointer;" title="Agregar comentario">+ Nota</button>`;
+      : `<button type="button" onclick="editPendienteComentario('${m.ID}')" class="lc-link" title="Agregar comentario"><svg class="ic"><use href="#i-edit"/></svg>Nota</button>`;
 
-    return `<tr class="row-hover" style="border-bottom:1px solid var(--border);">
+    return `<tr class="row-hover">
       <td class="px-2 py-1.5 text-[8px]" style="color:var(--text-dim);">${formatFecha(m.Fecha)}</td>
       <td class="px-2 py-1.5 font-mono text-xs font-semibold" style="color:var(--text);">${esc(m["N° Petición"] || "—")}</td>
       <td class="px-2 py-1.5"><div class="flex flex-wrap items-center">${examPills}</div></td>
       <td class="px-2 py-1.5">${comentarioHtml}</td>
       <td class="px-2 py-1.5 text-center">
-        <select onchange="togglePendienteProcesada('${m.ID}',this.value)" class="${cls}" style="font-size:.65rem;font-weight:700;padding:.15rem .45rem;border-radius:9999px;cursor:pointer;background:transparent;">
-          <option value="No" ${!proc ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">❌ No</option>
-          <option value="Sí" ${proc ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">✅ Sí</option>
+        <select onchange="togglePendienteProcesada('${m.ID}',this.value)" class="lc-state ${cls}">
+          <option value="No" ${!proc ? 'selected' : ''}>✕ No</option>
+          <option value="Sí" ${proc ? 'selected' : ''}>✓ Sí</option>
         </select>
       </td>
-      <td class="px-1 text-center"><button onclick="deletePendiente('${m.ID}')" class="text-[9px] hover:opacity-80 transition-opacity" style="color:var(--red-text);cursor:pointer;" title="Eliminar">✕</button></td>
+      <td class="px-1 text-center"><button onclick="deletePendiente('${m.ID}')" class="lc-del" title="Eliminar" aria-label="Eliminar"><svg class="ic"><use href="#i-x"/></svg></button></td>
     </tr>`;
   }).join("");
 }
@@ -698,13 +697,13 @@ function renderPendientes() {
 // ===================== CURVAS / URGENTES =====================
 function addCurva() {
   const p = document.getElementById("curvaPeticion").value.trim();
-  if (!p) { showToast("Petición", "error"); return; }
+  if (!p) { showToast("Ingresa N° de petición", "error"); return; }
   const id = Date.now().toString(), fecha = fechaHoy();
   datos.curvas.push({ ID: id, "N° Petición": p, Validada: "No", Fecha: fecha });
   renderCurvas();
   apiPostBg({ action: "insert", sheet: "Pizarra_Curvas", row: [id, p, "No", fecha] });
   document.getElementById("curvaPeticion").value = "";
-  showToast("✓ Curva", "success");
+  showToast("Curva agregada", "success");
 }
 function toggleCurva(id, v) { const i = datos.curvas.find(c => c.ID === id); if (i) i.Validada = v; renderCurvas(); apiPostBg({ action: "update", sheet: "Pizarra_Curvas", id, updates: { Validada: v } }); }
 function deleteCurva(id) { datos.curvas = datos.curvas.filter(c => c.ID !== id); renderCurvas(); apiPostBg({ action: "delete", sheet: "Pizarra_Curvas", id }); }
@@ -712,13 +711,13 @@ function renderCurvas() { renderValTable("tablaCurvas", datos.curvas, "toggleCur
 
 function addUrgente() {
   const p = document.getElementById("urgentePeticion").value.trim();
-  if (!p) { showToast("Petición", "error"); return; }
+  if (!p) { showToast("Ingresa N° de petición", "error"); return; }
   const id = Date.now().toString(), fecha = fechaHoy();
   datos.urgentes.push({ ID: id, "N° Petición": p, Validada: "No", Fecha: fecha });
   renderUrgentes();
   apiPostBg({ action: "insert", sheet: "Pizarra_Urgentes", row: [id, p, "No", fecha] });
   document.getElementById("urgentePeticion").value = "";
-  showToast("✓ Urgente", "success");
+  showToast("Urgente agregado", "success");
 }
 function toggleUrgente(id, v) { const i = datos.urgentes.find(c => c.ID === id); if (i) i.Validada = v; renderUrgentes(); apiPostBg({ action: "update", sheet: "Pizarra_Urgentes", id, updates: { Validada: v } }); }
 function deleteUrgente(id) { datos.urgentes = datos.urgentes.filter(c => c.ID !== id); renderUrgentes(); apiPostBg({ action: "delete", sheet: "Pizarra_Urgentes", id }); }
@@ -727,10 +726,10 @@ function renderUrgentes() { renderValTable("tablaUrgentes", datos.urgentes, "tog
 function renderValTable(tbId, items, toggleFn, delFn) {
   const tb = document.getElementById(tbId);
   const sorted = [...items].sort((a, b) => parseFecha(b.Fecha) - parseFecha(a.Fecha));
-  if (!sorted.length) { tb.innerHTML = `<tr><td colspan="4" class="px-2 py-2.5 text-center text-[9px] italic" style="color:var(--text-dim);">Sin registros</td></tr>`; return; }
+  if (!sorted.length) { tb.innerHTML = `<tr><td colspan="4" class="text-center italic">Sin registros</td></tr>`; return; }
   tb.innerHTML = sorted.map(c => {
     const v = c.Validada === "Sí" || c.Validada === "Si"; const cls = v ? "st-revisado" : "st-no-revisado";
-    return `<tr class="row-hover" style="border-bottom:1px solid var(--border);"><td class="px-2 py-1 text-[8px]" style="color:var(--text-dim);">${formatFecha(c.Fecha)}</td><td class="px-2 py-1 font-mono text-xs">${c["N° Petición"] || ""}</td><td class="px-2 py-1 text-center"><select onchange="${toggleFn}('${c.ID}',this.value)" class="${cls}" style="font-size:.6rem;font-weight:700;padding:.15rem .4rem;border-radius:9999px;cursor:pointer;background:transparent;"><option value="No" ${!v ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">❌ No</option><option value="Sí" ${v ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">✅ Sí</option></select></td><td class="px-1"><button onclick="${delFn}('${c.ID}')" class="text-[9px]" style="color:var(--red-text);cursor:pointer;">✕</button></td></tr>`;
+    return `<tr class="row-hover"><td class="px-2 py-1 text-[8px]" style="color:var(--text-dim);">${formatFecha(c.Fecha)}</td><td class="px-2 py-1 font-mono text-xs">${c["N° Petición"] || ""}</td><td class="px-2 py-1 text-center"><select onchange="${toggleFn}('${c.ID}',this.value)" class="lc-state ${cls}"><option value="No" ${!v ? 'selected' : ''}>✕ No</option><option value="Sí" ${v ? 'selected' : ''}>✓ Sí</option></select></td><td class="px-1"><button onclick="${delFn}('${c.ID}')" class="lc-del" title="Eliminar" aria-label="Eliminar"><svg class="ic"><use href="#i-x"/></svg></button></td></tr>`;
   }).join("");
 }
 
@@ -750,17 +749,17 @@ function parseFecha(f) {
 }
 
 // ===================== RECORDATORIOS =====================
-function addRecordatorio() { const t = document.getElementById("recordatorioTexto").value.trim(); if (!t) return; const id = Date.now().toString(), f = new Date().toLocaleString("es-CL"); datos.recordatorios.push({ ID: id, Texto: t, Usuario: "", Fecha: f }); renderRecordatorios(); apiPostBg({ action: "insert", sheet: "Pizarra_Recordatorios", row: [id, t, "", f] }); document.getElementById("recordatorioTexto").value = ""; showToast("✓ Nota", "success"); }
+function addRecordatorio() { const t = document.getElementById("recordatorioTexto").value.trim(); if (!t) return; const id = Date.now().toString(), f = new Date().toLocaleString("es-CL"); datos.recordatorios.push({ ID: id, Texto: t, Usuario: "", Fecha: f }); renderRecordatorios(); apiPostBg({ action: "insert", sheet: "Pizarra_Recordatorios", row: [id, t, "", f] }); document.getElementById("recordatorioTexto").value = ""; showToast("Nota agregada", "success"); }
 function deleteRecordatorio(id) { datos.recordatorios = datos.recordatorios.filter(r => r.ID !== id); renderRecordatorios(); apiPostBg({ action: "delete", sheet: "Pizarra_Recordatorios", id }); }
-function renderRecordatorios() { const c = document.getElementById("listaRecordatorios"); if (!datos.recordatorios.length) { c.innerHTML = '<p class="text-[9px] italic" style="color:var(--text-dim);">Sin notas</p>'; return; } c.innerHTML = datos.recordatorios.map(r => `<div class="flex items-start justify-between p-1.5 rounded-lg" style="background:var(--bg-input);border:1px solid var(--border);"><div class="flex-1"><p class="text-xs">${esc(r.Texto)}</p><p class="text-[8px]" style="color:var(--text-dim);">${r.Fecha || ""}</p></div><button onclick="deleteRecordatorio('${r.ID}')" class="text-[9px] ml-1.5 shrink-0" style="color:var(--red-text);cursor:pointer;">✕</button></div>`).join(""); }
+function renderRecordatorios() { const c = document.getElementById("listaRecordatorios"); if (!datos.recordatorios.length) { c.innerHTML = '<p class="lc-empty">Sin notas</p>'; return; } c.innerHTML = datos.recordatorios.map(r => `<div class="lc-note"><div class="flex-1"><p class="lc-note-text">${esc(r.Texto)}</p><p class="lc-note-date">${r.Fecha || ""}</p></div><button onclick="deleteRecordatorio('${r.ID}')" class="lc-del" title="Eliminar" aria-label="Eliminar"><svg class="ic"><use href="#i-x"/></svg></button></div>`).join(""); }
 
 // ===================== CUSTOM CUADRANTES =====================
-function crearCuadrante() { const n = prompt("Nombre del cuadrante:"); if (!n || !n.trim()) return; const id = Date.now().toString(); datos.custom.push({ Cuadrante: n.trim(), ID: id, "N° Petición": "", Detalle: "(Creado)" }); renderCustom(); apiPostBg({ action: "insert", sheet: "Pizarra_Custom", row: [n.trim(), id, "", "(Creado)"] }); showToast("✓ Cuadrante creado", "success"); }
+function crearCuadrante() { const n = prompt("Nombre del cuadrante:"); if (!n || !n.trim()) return; const id = Date.now().toString(); datos.custom.push({ Cuadrante: n.trim(), ID: id, "N° Petición": "", Detalle: "(Creado)" }); renderCustom(); apiPostBg({ action: "insert", sheet: "Pizarra_Custom", row: [n.trim(), id, "", "(Creado)"] }); showToast("Cuadrante creado", "success"); }
 function addCustomRow(q) {
   const ci = css(q);
   const pi = document.getElementById("cp_" + ci), di = document.getElementById("cd_" + ci);
   const p = pi ? pi.value.trim() : "", d = di ? di.value.trim() : "";
-  if (!p && !d) { showToast("Escribe algo", "error"); return; }
+  if (!p && !d) { showToast("Escribe petición o detalle", "error"); return; }
   const id = Date.now().toString();
   datos.custom.push({ Cuadrante: q, ID: id, "N° Petición": p, Detalle: d });
   if (pi) pi.value = "";
@@ -769,7 +768,7 @@ function addCustomRow(q) {
   const newPi = document.getElementById("cp_" + ci);
   if (newPi) newPi.focus();
   apiPostBg({ action: "insert", sheet: "Pizarra_Custom", row: [q, id, p, d] });
-  showToast("✓", "success");
+  showToast("Fila agregada", "success");
 }
 function handleCustomEnter(q, isPeticion) {
   const ci = css(q);
@@ -784,7 +783,7 @@ function handleCustomEnter(q, isPeticion) {
   }
 }
 function deleteCustomRow(id) { datos.custom = datos.custom.filter(c => c.ID !== id); renderCustom(); apiPostBg({ action: "delete", sheet: "Pizarra_Custom", id }); }
-function deleteCustomCuadrante(q) { if (!confirm("¿Eliminar '" + q + "'?")) return; datos.custom = datos.custom.filter(c => c.Cuadrante !== q); renderCustom(); apiPostBg({ action: "delete_by_col", sheet: "Pizarra_Custom", column: "Cuadrante", value: q }); showToast("Eliminado", "success"); }
+function deleteCustomCuadrante(q) { if (!confirm("¿Eliminar '" + q + "'?")) return; datos.custom = datos.custom.filter(c => c.Cuadrante !== q); renderCustom(); apiPostBg({ action: "delete_by_col", sheet: "Pizarra_Custom", column: "Cuadrante", value: q }); showToast("Cuadrante eliminado", "success"); }
 function css(s) { return s.replace(/[^a-zA-Z0-9]/g, "_"); }
 function renderCustom() {
   const c = document.getElementById("customContainer");
@@ -802,33 +801,33 @@ function renderCustom() {
     const rows = datos.custom.filter(item => item.Cuadrante === n);
     const validRows = rows.filter(r => r["N° Petición"] || (r.Detalle && r.Detalle !== "(Creado)"));
     const ci = css(n);
-    return `<div class="glass-card p-3">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="text-xs font-bold">${esc(n)}</h3>
-        <button onclick="deleteCustomCuadrante('${escA(n)}')" class="text-[10px]" style="color:var(--red-text);cursor:pointer;" title="Eliminar cuadrante">🗑</button>
+    return `<div class="glass-card lc-card">
+      <div class="lc-quad-head">
+        <h3>${esc(n)}</h3>
+        <button onclick="deleteCustomCuadrante('${escA(n)}')" class="lc-del" title="Eliminar cuadrante" aria-label="Eliminar cuadrante"><svg class="ic"><use href="#i-trash"/></svg></button>
       </div>
-      <div class="flex gap-1 mb-2">
-        <input type="text" id="cp_${ci}" class="input-field text-xs" placeholder="Petición" style="width:38%;" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')handleCustomEnter('${escA(n)}', true)" />
-        <input type="text" id="cd_${ci}" class="input-field text-xs flex-1" placeholder="Detalle" onkeydown="if(event.key==='Enter')handleCustomEnter('${escA(n)}', false)" />
-        <button class="btn btn-xs btn-primary" onclick="addCustomRow('${escA(n)}')">+</button>
+      <div class="flex gap-2 mb-3">
+        <input type="text" id="cp_${ci}" class="input-field lc-num" placeholder="Petición" inputmode="numeric" style="width:38%;" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter')handleCustomEnter('${escA(n)}', true)" />
+        <input type="text" id="cd_${ci}" class="input-field flex-1" placeholder="Detalle" onkeydown="if(event.key==='Enter')handleCustomEnter('${escA(n)}', false)" />
+        <button class="btn btn-primary btn-icon" onclick="addCustomRow('${escA(n)}')" title="Agregar fila" aria-label="Agregar fila"><svg class="ic"><use href="#i-plus"/></svg></button>
       </div>
-      <div class="rounded-lg overflow-hidden" style="border:1px solid var(--border);">
-        <table class="w-full text-xs">
+      <div class="lc-table-wrap">
+        <table class="lc-table">
           <thead>
-            <tr style="background:var(--bg-input);">
-              <th class="text-left px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;width:38%;">Petición</th>
-              <th class="text-left px-2 py-1 font-semibold" style="color:var(--text-muted);font-size:.7rem;">Detalle</th>
-              <th class="w-5"></th>
+            <tr>
+              <th style="width:38%;">Petición</th>
+              <th>Detalle</th>
+              <th class="w-8"></th>
             </tr>
           </thead>
           <tbody>
             ${validRows.length === 0
-              ? `<tr><td colspan="3" class="px-2 py-2 text-center text-[9px] italic" style="color:var(--text-dim);">Sin registros</td></tr>`
+              ? `<tr><td colspan="3" class="text-center italic">Sin registros</td></tr>`
               : validRows.map(r => `
-                <tr class="row-hover" style="border-bottom:1px solid var(--border);">
+                <tr class="row-hover">
                   <td class="px-2 py-1 font-mono text-xs font-semibold" style="color:var(--text);">${esc(r["N° Petición"] || "—")}</td>
                   <td class="px-2 py-1">${r.Detalle && r.Detalle !== "(Creado)" ? `<span class="exam-pill font-medium">${esc(r.Detalle)}</span>` : '<span style="color:var(--text-dim);">—</span>'}</td>
-                  <td class="px-1 text-center"><button onclick="deleteCustomRow('${r.ID}')" class="text-[10px] hover:opacity-80 transition-opacity" style="color:var(--red-text);cursor:pointer;" title="Eliminar">✕</button></td>
+                  <td class="px-1 text-center"><button onclick="deleteCustomRow('${r.ID}')" class="lc-del" title="Eliminar" aria-label="Eliminar"><svg class="ic"><use href="#i-x"/></svg></button></td>
                 </tr>
               `).join("")
             }
@@ -837,7 +836,7 @@ function renderCustom() {
       </div>
     </div>`;
   }).join("");
-  h += `<div class="glass-card p-3 flex items-center justify-center border-2 border-dashed cursor-pointer hover:border-indigo-500 transition-colors" style="border-color:var(--border);" onclick="crearCuadrante()"><p class="text-xs" style="color:var(--text-dim);">+ Nuevo</p></div>`;
+  h += `<div class="glass-card lc-add-card" onclick="crearCuadrante()"><p><svg class="ic"><use href="#i-plus"/></svg>Nuevo cuadrante</p></div>`;
   c.innerHTML = h;
 
   // Restaurar valores y foco
@@ -855,19 +854,19 @@ function renderCustom() {
 function renderCentros() {
   const tb = document.getElementById("tablaCentros");
   if (!datos.centros.length) {
-    tb.innerHTML = '<tr><td colspan="6" class="p-3 text-center text-xs" style="color:var(--text-dim);">Sin centros</td></tr>';
+    tb.innerHTML = '<tr><td colspan="6" class="text-center italic">Sin centros</td></tr>';
     return;
   }
   tb.innerHTML = datos.centros.map(c => {
     const e = c.Estado || "NO REVISADO :(";
     const info = ESTADOS_CENTRO.find(s => s.value === e) || ESTADOS_CENTRO[0];
-    return `<tr class="row-hover" style="border-bottom:1px solid var(--border);"><td class="px-2 py-2 font-semibold text-xs">${esc(c.Centro)}</td><td class="px-2 py-2 text-center"><select onchange="updateCentro('${escA(c.Centro)}','Estado',this.value)" class="${info.css}" style="cursor:pointer;font-size:.6rem;padding:.15rem .4rem;border-radius:9999px;position:relative;z-index:1;">${ESTADOS_CENTRO.map(s => `<option value="${s.value}" ${s.value === e ? 'selected' : ''} style="background:var(--bg-input);color:var(--text);">${s.label}</option>`).join("")}</select></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Pdte Rev"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Pdte Rev',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Pdte Val"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Pdte Val',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Rev Hasta"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Rev Hasta',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c.Responsable || '')}" placeholder="—" maxlength="10" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Responsable',this.value.toUpperCase())" class="input-field text-center text-[10px] font-bold" style="width:70px;text-transform:uppercase;" /></td></tr>`;
+    return `<tr class="row-hover"><td class="px-2 py-2 font-semibold text-xs">${esc(c.Centro)}</td><td class="px-2 py-2 text-center"><select onchange="updateCentro('${escA(c.Centro)}','Estado',this.value)" class="lc-state ${info.css}">${ESTADOS_CENTRO.map(s => `<option value="${s.value}" ${s.value === e ? 'selected' : ''}>${s.label}</option>`).join("")}</select></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Pdte Rev"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Pdte Rev',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Pdte Val"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Pdte Val',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Rev Hasta"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Rev Hasta',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c.Responsable || '')}" placeholder="—" maxlength="10" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Responsable',this.value.toUpperCase())" class="input-field text-center text-[10px] font-bold" style="width:70px;text-transform:uppercase;" /></td></tr>`;
   }).join("");
 }
-function updateCentro(c, f, v) { const i = datos.centros.find(x => x.Centro === c); if (i) i[f] = v; renderCentros(); apiPostBg({ action: "update", sheet: "Centros", id: c, updates: { [f]: v } }); showToast(`${c}: OK`, "success"); }
+function updateCentro(c, f, v) { const i = datos.centros.find(x => x.Centro === c); if (i) i[f] = v; renderCentros(); apiPostBg({ action: "update", sheet: "Centros", id: c, updates: { [f]: v } }); showToast(`${c} actualizado`, "success"); }
 
 function resetCentros() {
-  showConfirm("🔄 Reiniciar Centros", "Se borrarán Estado, Pdte Rev, Pdte Val, Rev Hasta y Responsable de TODOS los centros. ¿Continuar?", async () => {
+  showConfirm("Reiniciar centros", "Se borrarán estado, pendientes y responsable de todos los centros.", async () => {
     const r = await apiPostBlock({ action: "reset_centros" });
     if (r) {
       datos.centros.forEach(c => { c.Estado = "NO REVISADO :("; c["Pdte Rev"] = ""; c["Pdte Val"] = ""; c["Rev Hasta"] = ""; c.Responsable = ""; });
@@ -908,19 +907,19 @@ function renderStats(customErrors) {
   const userCount = {}; errs.forEach(e => { const u = e.Usuario || "?"; userCount[u] = (userCount[u] || 0) + 1; });
   const topUsers = Object.entries(userCount).sort((a, b) => b[1] - a[1]).slice(0, 15);
   const maxU = topUsers.length ? topUsers[0][1] : 1;
-  document.getElementById("statsTopUsuarios").innerHTML = topUsers.length === 0 ? '<p class="text-[10px] italic" style="color:var(--text-dim);">Sin datos</p>' : topUsers.map(([u, c]) => `<div class="flex items-center gap-2"><span class="text-[10px] font-mono font-bold" style="width:60px;color:var(--text);">${esc(u)}</span><div class="flex-1 rounded-full overflow-hidden" style="height:14px;background:var(--bg-input);"><div style="height:100%;width:${(c / maxU * 100).toFixed(0)}%;background:linear-gradient(90deg,#ef4444,#f97316);border-radius:9999px;"></div></div><span class="text-[10px] font-bold" style="color:var(--red-text);width:25px;text-align:right;">${c}</span></div>`).join("");
+  document.getElementById("statsTopUsuarios").innerHTML = topUsers.length === 0 ? '<p class="lc-empty">Sin datos</p>' : topUsers.map(([u, c]) => `<div class="lc-bar-row lc-bar--bad"><span class="lc-bar-name lc-pet">${esc(u)}</span><span class="lc-bar-val">${c}</span><div class="lc-bar"><div class="lc-bar-fill" style="width:${(c / maxU * 100).toFixed(0)}%;"></div></div></div>`).join("");
 
   // Top exámenes AGREGADOS
   const exAgCount = {}; ag.forEach(e => { const x = e.Examen || "?"; exAgCount[x] = (exAgCount[x] || 0) + 1; });
   const topExAg = Object.entries(exAgCount).sort((a, b) => b[1] - a[1]).slice(0, 15);
   const maxEAg = topExAg.length ? topExAg[0][1] : 1;
-  document.getElementById("statsTopExAgregados").innerHTML = topExAg.length === 0 ? '<p class="text-[10px] italic" style="color:var(--text-dim);">Sin datos</p>' : topExAg.map(([x, c]) => `<div style="margin-bottom:6px;"><div class="flex items-center justify-between"><span class="text-[9px] font-bold" style="color:var(--text);">${esc(x)}</span><span class="text-[10px] font-bold" style="color:var(--green-text);">${c}</span></div><div class="rounded-full overflow-hidden" style="height:10px;background:var(--bg-input);margin-top:2px;"><div style="height:100%;width:${(c / maxEAg * 100).toFixed(0)}%;background:linear-gradient(90deg,#22c55e,#10b981);border-radius:9999px;"></div></div></div>`).join("");
+  document.getElementById("statsTopExAgregados").innerHTML = topExAg.length === 0 ? '<p class="lc-empty">Sin datos</p>' : topExAg.map(([x, c]) => `<div class="lc-bar-row lc-bar--ok"><span class="lc-bar-name">${esc(x)}</span><span class="lc-bar-val">${c}</span><div class="lc-bar"><div class="lc-bar-fill" style="width:${(c / maxEAg * 100).toFixed(0)}%;"></div></div></div>`).join("");
 
   // Top exámenes ELIMINADOS
   const exElCount = {}; el.forEach(e => { const x = e.Examen || "?"; exElCount[x] = (exElCount[x] || 0) + 1; });
   const topExEl = Object.entries(exElCount).sort((a, b) => b[1] - a[1]).slice(0, 15);
   const maxEEl = topExEl.length ? topExEl[0][1] : 1;
-  document.getElementById("statsTopExEliminados").innerHTML = topExEl.length === 0 ? '<p class="text-[10px] italic" style="color:var(--text-dim);">Sin datos</p>' : topExEl.map(([x, c]) => `<div style="margin-bottom:6px;"><div class="flex items-center justify-between"><span class="text-[9px] font-bold" style="color:var(--text);">${esc(x)}</span><span class="text-[10px] font-bold" style="color:var(--red-text);">${c}</span></div><div class="rounded-full overflow-hidden" style="height:10px;background:var(--bg-input);margin-top:2px;"><div style="height:100%;width:${(c / maxEEl * 100).toFixed(0)}%;background:linear-gradient(90deg,#ef4444,#dc2626);border-radius:9999px;"></div></div></div>`).join("");
+  document.getElementById("statsTopExEliminados").innerHTML = topExEl.length === 0 ? '<p class="lc-empty">Sin datos</p>' : topExEl.map(([x, c]) => `<div class="lc-bar-row lc-bar--bad"><span class="lc-bar-name">${esc(x)}</span><span class="lc-bar-val">${c}</span><div class="lc-bar"><div class="lc-bar-fill" style="width:${(c / maxEEl * 100).toFixed(0)}%;"></div></div></div>`).join("");
 }
 
 async function changeStatsRange() {
@@ -967,7 +966,7 @@ function iniciarAlertas() {
 function checkAlertUrgentes() {
   const noVal = datos.urgentes.filter(u => u.Validada !== "Sí" && u.Validada !== "Si");
   if (noVal.length > 0) {
-    const msgs = noVal.map(u => `🚨 Urgente #${u["N° Petición"]} NO validada`);
+    const msgs = noVal.map(u => `Urgente #${u["N° Petición"]} sin validar`);
     showAlerts(msgs, "alert-item");
   }
 }
@@ -975,7 +974,7 @@ function checkAlertUrgentes() {
 function checkAlertCurvas() {
   const noVal = datos.curvas.filter(c => c.Validada !== "Sí" && c.Validada !== "Si");
   if (noVal.length > 0) {
-    const msgs = noVal.map(c => `📈 Curva #${c["N° Petición"]} NO validada`);
+    const msgs = noVal.map(c => `Curva #${c["N° Petición"]} sin validar`);
     showAlerts(msgs, "alert-item");
   }
 }
@@ -983,7 +982,7 @@ function checkAlertCurvas() {
 function checkAlertMuestras() {
   const noAlm = datos.muestras.filter(m => m.Almacenada !== "Sí" && m.Almacenada !== "Si");
   if (noAlm.length > 0) {
-    const msgs = noAlm.map(m => `🧊 Muestra #${m["N° Petición"]} (${m.Examen}) NO almacenada`);
+    const msgs = noAlm.map(m => `Muestra #${m["N° Petición"]} (${m.Examen}) sin almacenar`);
     showAlerts(msgs, "alert-item alert-item-warn");
   }
 }
@@ -992,19 +991,19 @@ function checkAlertPendientes() {
   if (!datos.pendientes) return;
   const noProc = datos.pendientes.filter(p => p.Procesada !== "Sí" && p.Procesada !== "Si");
   if (noProc.length > 0) {
-    const msgs = noProc.map(p => `📋 Pendiente #${p["N° Petición"]} (${p.Examen}) NO procesada`);
+    const msgs = noProc.map(p => `Pendiente #${p["N° Petición"]} (${p.Examen}) sin procesar`);
     showAlerts(msgs, "alert-item alert-item-warn");
   }
 }
 
 function showAlerts(msgs, cssClass) {
   const bar = document.getElementById("alertBar");
-  bar.innerHTML = msgs.map(m => `<div class="${cssClass} alert-pulse">${m}</div>`).join("");
+  bar.innerHTML = msgs.map(m => `<div class="${cssClass}" onclick="this.remove()" title="Clic para cerrar"><svg class="ic"><use href="#i-${cssClass.includes('warn') ? 'info' : 'alert'}"/></svg><span>${m}</span></div>`).join("");
   setTimeout(() => { bar.innerHTML = ""; }, 15000);
 }
 
 // ===================== ADMIN =====================
-function cerrarSemana() { const p = document.getElementById("adminPass").value; if (p !== ADMIN_PASSWORD) { showToast("Contraseña incorrecta", "error"); return; } showConfirm("⚠️ Cerrar Semana", "Exportará, enviará correo y limpiará todo. ¿Continuar?", async () => { const r = await apiPostBlock({ action: "cerrar_semana" }); if (r) { showToast(typeof r === "string" ? r : "Cerrado", "success"); document.getElementById("adminPass").value = ""; cacheHistorico = {}; const select = document.getElementById("statsRangeSelect"); if (select) select.value = "actual"; await cargarDatos(false); } }); }
+function cerrarSemana() { const p = document.getElementById("adminPass").value; if (p !== ADMIN_PASSWORD) { showToast("Contraseña incorrecta", "error"); return; } showConfirm("Cerrar semana", "Se exportará, se enviará el correo y se limpiará todo.", async () => { const r = await apiPostBlock({ action: "cerrar_semana" }); if (r) { showToast(typeof r === "string" ? r : "Semana cerrada", "success"); document.getElementById("adminPass").value = ""; cacheHistorico = {}; const select = document.getElementById("statsRangeSelect"); if (select) select.value = "actual"; await cargarDatos(false); } }); }
 function descargarCSVLocal() { if (!datos.errores.length) { showToast("Sin datos", "info"); return; } let csv = "\uFEFF" + "Fecha,Día,Acción,N° Petición,Examen,Usuario\n"; datos.errores.forEach(e => { csv += [e.Fecha || "", e["Día"] || "", e["Acción"] || "", e["N° Petición"] || "", e.Examen || "", e.Usuario || ""].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n"; }); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" })); a.download = `Errores_${new Date().toISOString().slice(0, 10)}.csv`; a.click(); showToast("CSV descargado", "success"); }
 
 // ===================== HELPERS =====================

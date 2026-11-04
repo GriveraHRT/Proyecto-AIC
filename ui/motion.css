@@ -1,0 +1,67 @@
+/* =========================================================
+   LabControl · motion.css — guion de movimiento (M1–M7)
+   Duraciones/easings vienen de los tokens de cada look.
+   Regla P1: nada se anima por el render del polling; solo
+   por clases que pone ui-hooks.js tras una acción del usuario.
+   ========================================================= */
+
+/* ---------- Keyframes comunes ---------- */
+@keyframes lc-fade-rise { from { opacity: 0; transform: translateY(var(--rise)); } to { opacity: 1; transform: none; } }
+@keyframes lc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lc-spin { to { transform: rotate(360deg); } }
+@keyframes lc-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(calc(var(--shake) * -1)); }
+  40% { transform: translateX(var(--shake)); }
+  60% { transform: translateX(calc(var(--shake) * -.6)); }
+  80% { transform: translateX(calc(var(--shake) * .6)); }
+}
+@keyframes lc-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes lc-draw-14 { from { stroke-dashoffset: 14; } to { stroke-dashoffset: 0; } }
+@keyframes lc-pop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+/* ---------- Pixel-art: matraz ---------- */
+@keyframes px-rise {
+  0% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(-4px); }
+  100% { opacity: 0; transform: translateY(-5px); }
+}
+@keyframes px-blink { 0%, 49.9% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes px-blink-inv { 0%, 49.9% { opacity: 0; } 50%, 100% { opacity: 1; } }
+@keyframes px-spark { 0% { opacity: 0; } 20% { opacity: 1; } 60% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes px-scan { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+/* Trabajando (= "Guardando…" o cargando): burbujea mientras dure */
+.px-logo[data-state="working"] .px-bubble { animation: px-rise 900ms steps(4, jump-end) infinite; }
+.px-logo[data-state="working"] .px-b2 { animation-delay: 300ms; }
+.px-logo[data-state="working"] .px-b3 { animation-delay: 600ms; }
+.px-logo[data-state="working"] .px-wave-a { animation: px-blink 600ms linear infinite; }
+.px-logo[data-state="working"] .px-wave-b { animation: px-blink-inv 600ms linear infinite; }
+
+/* Guardado: destello pixel una vez (solo look expresivo) */
+html[data-look="expresivo"] .px-logo[data-state="done"] .px-spark { animation: px-spark 700ms steps(3, jump-end) 1; }
+html[data-look="expresivo"] .px-logo[data-state="done"] .px-spark-2 { animation-delay: 120ms; }
+
+/* Hover del logo (solo expresivo, en reposo): una burbujeada */
+html[data-look="expresivo"] .lc-logo[data-state="idle"]:hover .px-bubble { animation: px-rise 900ms steps(4, jump-end) 1; }
+html[data-look="expresivo"] .lc-logo[data-state="idle"]:hover .px-b2 { animation-delay: 200ms; }
+html[data-look="expresivo"] .lc-logo[data-state="idle"]:hover .px-b3 { animation-delay: 400ms; }
+
+/* =========================================================
+   P5 · prefers-reduced-motion
+   ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+  .lc-intro { display: none !important; }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  .lc-status[data-state="saving"] .lc-st-saving .arc,
+  .lc-status[data-state="saving"] .lc-st-bars rect,
+  .px-logo .px-bubble,
+  #diasContainer:empty { animation: none !important; }
+  .lc-ecg { stroke-dashoffset: 0; }
+}
