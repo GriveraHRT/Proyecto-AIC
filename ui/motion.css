@@ -54,11 +54,6 @@ html[data-look="expresivo"] .lc-logo[data-state="idle"]:hover .px-b3 { animation
 @keyframes lc-intro-lift { to { transform: translateY(-100%); visibility: hidden; } }
 @keyframes lc-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 
-/* A · Clínico: 600 ms */
-html[data-look="sobrio"] .lc-intro { animation: lc-intro-out 200ms var(--ease-in) 400ms forwards; }
-html[data-look="sobrio"] .lc-intro-logo { animation: px-scan 300ms steps(8, jump-end) backwards; }
-html[data-look="sobrio"] .lc-intro-word { animation: lc-fade-rise 250ms var(--ease-out) 150ms backwards; }
-
 /* B · Señal: 1 200 ms */
 html[data-look="expresivo"] .lc-intro { animation: lc-intro-lift 220ms cubic-bezier(.7, 0, .3, 1) 1000ms forwards; }
 html[data-look="expresivo"] .lc-intro-logo { animation: px-scan 400ms steps(16, jump-end) backwards; }
@@ -85,7 +80,6 @@ html[data-look="expresivo"] .lc-intro-ecg path { stroke-dasharray: 140; animatio
 .lc-tab-ind.no-anim { transition: none; }
 /* "backwards": al terminar no queda transform → no crea stacking contexts
    que tapen los desplegables */
-html[data-look="sobrio"] .module-panel.active { animation: lc-fade-rise 160ms var(--ease-out) backwards; }
 html[data-look="expresivo"] .module-panel.active > * { animation: lc-fade-rise 280ms var(--ease-out) backwards; }
 html[data-look="expresivo"] .module-panel.active > :nth-child(2) { animation-delay: 30ms; }
 html[data-look="expresivo"] .module-panel.active > :nth-child(3) { animation-delay: 60ms; }

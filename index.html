@@ -1,23 +1,18 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark" data-look="sobrio">
+<html lang="es" data-theme="dark" data-look="expresivo">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LabControl - Gestión de Laboratorio Clínico</title>
   <meta name="description" content="Sistema de gestión interna para laboratorio clínico." />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%23cfd8e6' d='M7 2h2v4H7zM6 6h4v1H6zM5 7h6v1H5zM4 8h8v1H4z'/%3E%3Cpath fill='%235b7cf0' d='M4 9h8v1H4zM3 10h10v2H3zM2 12h12v2H2z'/%3E%3Cpath fill='%2317202e' d='M5 1h6v1H5zM6 2h1v4H6zM9 2h1v4H9zM5 6h1v1H5zM10 6h1v1h-1zM4 7h1v1H4zM11 7h1v1h-1zM3 8h1v2H3zM12 8h1v2h-1zM2 10h1v2H2zM13 10h1v2h-1zM1 12h1v2H1zM14 12h1v2h-1zM1 14h14v1H1z'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%23e6e0fa' d='M7 2h2v4H7zM6 6h4v1H6zM5 7h6v1H5zM4 8h8v1H4z'/%3E%3Cpath fill='%236d3df5' d='M4 9h8v1H4zM3 10h10v2H3zM2 12h12v2H2z'/%3E%3Cpath fill='%231a1530' d='M5 1h6v1H5zM6 2h1v4H6zM9 2h1v4H9zM5 6h1v1H5zM10 6h1v1h-1zM4 7h1v1H4zM11 7h1v1h-1zM3 8h1v2H3zM12 8h1v2h-1zM2 10h1v2H2zM13 10h1v2h-1zM1 12h1v2H1zM14 12h1v2h-1zM1 14h14v1H1z'/%3E%3C/svg%3E">
 
-  <!-- Aplicar tema / look / intro antes de pintar (evita parpadeo) -->
+  <!-- Aplicar tema e intro antes de pintar (evita parpadeo) -->
   <script>
     (function () {
       var d = document.documentElement, p = new URLSearchParams(location.search);
-      var look = p.get("look") || localStorage.getItem("lc_look") || "sobrio";
-      if (look !== "sobrio" && look !== "expresivo") look = "sobrio";
-      if (p.get("look")) localStorage.setItem("lc_look", look);
-      d.setAttribute("data-look", look);
-      var th = p.get("theme") || localStorage.getItem("labcontrol_theme");
-      if (p.get("theme")) localStorage.setItem("labcontrol_theme", th);
+      var th = localStorage.getItem("labcontrol_theme");
       if (th === "light" || th === "dark") d.setAttribute("data-theme", th);
       try {
         if (p.has("nointro") || sessionStorage.getItem("lc_intro")) d.classList.add("no-intro");
@@ -33,15 +28,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet" />
   <script>
     tailwind.config = { corePlugins: { preflight: true }, theme: { extend: { fontFamily: { sans: ['var(--font-ui)', 'system-ui', 'sans-serif'] } } } }
   </script>
-  <link rel="stylesheet" href="ui/look-sobrio.css?v=1" />
-  <link rel="stylesheet" href="ui/look-expresivo.css?v=1" />
-  <link rel="stylesheet" href="ui/base.css?v=1" />
-  <link rel="stylesheet" href="ui/motion.css?v=1" />
+  <link rel="stylesheet" href="ui/look-expresivo.css?v=20261107" />
+  <link rel="stylesheet" href="ui/base.css?v=20261107" />
+  <link rel="stylesheet" href="ui/motion.css?v=20261107" />
 </head>
 
 <body>
@@ -474,9 +468,8 @@
     </div>
   </div>
 
-  <script src="ui/dev.js?v=1"></script>
-  <script src="app.js?v=20261023_ui1"></script>
-  <script src="ui/ui-hooks.js?v=1"></script>
+  <script src="app.js?v=20261107"></script>
+  <script src="ui/ui-hooks.js?v=20261107"></script>
 </body>
 
 </html>

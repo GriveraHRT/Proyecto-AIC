@@ -285,19 +285,17 @@
   }
   function animateStats() {
     if (reduced() || !Element.prototype.animate) return;
-    var exp = look() === "expresivo";
     ["statTotal", "statAgregados", "statEliminados"].forEach(function (id) {
       var el = $(id); if (!el) return;
       var v = parseInt(el.textContent, 10) || 0;
-      if (exp) countUp(el, v, 700);
-      else el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "ease-out" });
+      countUp(el, v, 700);
     });
     ["statsTopUsuarios", "statsTopExAgregados", "statsTopExEliminados"].forEach(function (id) {
       var c = $(id); if (!c) return;
       c.querySelectorAll(".lc-bar-fill").forEach(function (b, i) {
         b.animate([{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }], {
-          duration: exp ? 600 : 300, delay: i * (exp ? 30 : 20),
-          easing: exp ? "cubic-bezier(.16,1,.3,1)" : "cubic-bezier(.2,0,0,1)", fill: "backwards"
+          duration: 600, delay: i * 30,
+          easing: "cubic-bezier(.16,1,.3,1)", fill: "backwards"
         });
       });
     });

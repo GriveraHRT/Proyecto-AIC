@@ -1,7 +1,7 @@
 # LabControl — Design Storyboard (rediseño visual)
 
-> Estado: **borrador para aprobación**. No se ha tocado código.
-> Alcance: solo presentación. `app.js`, IDs, nombres de funciones, estructura de datos y sincronización con Google Sheets **no se modifican**.
+> Estado: **implementado y publicado** — Dirección elegida: **B · "Señal" (expresivo)** con indicador de pestaña activa en fondo violeta suave + borde inferior.
+> Alcance: solo presentación. `app.js` (lógica, IDs, nombres de funciones, estructura de datos y sincronización con Google Sheets) se mantiene intacto.
 
 ---
 

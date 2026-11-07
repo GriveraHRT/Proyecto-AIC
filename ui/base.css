@@ -226,6 +226,7 @@ html[data-theme="dark"] .theme-toggle { background: var(--field-bg); }
 .lc-num, .lc-pet { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .lc-num::placeholder { font-family: var(--font-ui); }
 .lc-table--centros .input-field { height: 30px; font-size: var(--fs-micro); padding: 0 6px; }
+.lc-table--centros td:last-child .input-field { width: 96px !important; }
 
 /* Cajas Agregados / Eliminados */
 .lc-exam-box { padding: var(--s-3); border-radius: var(--r-m); border: 1px solid var(--border); background: var(--surface-2); transition: border-color var(--dur-2), box-shadow var(--dur-2); }
@@ -293,11 +294,16 @@ html[data-theme="dark"] .theme-toggle { background: var(--field-bg); }
 /* ---------- Pills ---------- */
 .exam-pill {
   display: inline-flex; align-items: center; gap: 4px;
-  height: 24px; padding: 0 9px; border-radius: 999px;
-  font-size: var(--fs-micro); font-weight: 600; letter-spacing: .01em;
-  background: var(--accent-soft); color: var(--accent); white-space: nowrap;
+  min-height: 24px; padding: 3px 9px; border-radius: 999px;
+  font-size: var(--fs-micro); font-weight: 600; letter-spacing: .01em; line-height: 1.25;
+  background: var(--accent-soft); color: var(--accent);
+  max-width: 100%; overflow-wrap: break-word;
 }
-.exam-pill button { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: -4px; border-radius: 999px; border: none; background: transparent; color: inherit; opacity: .75; cursor: pointer; }
+.lc-row .exam-pill, .lc-table .exam-pill { border-radius: 10px; white-space: normal; }
+#tablaPendientes td:nth-child(3) { min-width: 130px; }
+#tablaPendientes td:nth-child(4) span { max-width: 82px; }
+.lc-table th, .lc-table td { padding-left: 7px; padding-right: 7px; }
+.exam-pill button { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: -4px; border-radius: 999px; border: none; background: transparent; color: inherit; opacity: .75; cursor: pointer; flex: none; }
 .exam-pill button:hover { opacity: 1; background: color-mix(in srgb, currentColor 15%, transparent); }
 .exam-pill button .ic { width: 12px; height: 12px; stroke-width: 2.4; }
 #listaAgregados .exam-pill, .lc-row--ok .exam-pill { background: var(--surface); color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok-line); }
@@ -320,24 +326,24 @@ html[data-theme="dark"] .theme-toggle { background: var(--field-bg); }
 .lc-day-sec--bad .lc-day-sec-title { color: var(--bad); }
 .lc-day-sec--bad .lc-day-sec-title i { background: var(--bad); transform: rotate(45deg) scale(.85); }
 .lc-empty { font-size: var(--fs-micro); color: var(--text-dim); margin: 0; }
-.lc-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 4px 4px 8px; border-radius: var(--r-s); margin-bottom: 4px; border: 1px solid transparent; }
+.lc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 3px 6px; padding: 5px 4px 6px 8px; border-radius: var(--r-s); margin-bottom: 4px; border: 1px solid transparent; }
 .lc-row--ok { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok-line) 60%, transparent); }
 .lc-row--bad { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad-line) 60%, transparent); }
-.lc-row-main { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
-.lc-row-meta { display: flex; align-items: center; gap: 2px; flex: none; }
-.lc-pet { font-size: var(--fs-micro); font-weight: 600; color: var(--text); }
-.lc-user { font-size: var(--fs-micro); color: var(--text-dim); max-width: 7em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-row-main { display: contents; }
+.lc-row .exam-pill { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+.lc-row-meta { grid-column: 2; grid-row: 1; display: flex; align-items: center; gap: 2px; }
+.lc-pet { grid-column: 1; grid-row: 1; font-size: var(--fs-micro); font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-user { font-size: var(--fs-micro); color: var(--text-dim); max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Skeleton mientras no hay datos */
 #diasContainer:empty { min-height: 180px; border-radius: var(--r-l); background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface) 40%, var(--surface-2) 80%) 0 0 / 300% 100%; border: 1px solid var(--border); }
 
 /* ---------- Tablas ---------- */
-.lc-table-wrap { border: 1px solid var(--border); border-radius: var(--r-m); overflow: hidden; }
-.lc-table-wrap.overflow-x-auto, .overflow-x-auto.lc-table-wrap { overflow-x: auto; }
+.lc-table-wrap { border: 1px solid var(--border); border-radius: var(--r-m); overflow-x: auto; overflow-y: hidden; }
 .lc-table { width: 100%; border-collapse: collapse; font-size: var(--fs-label); }
-.lc-table th { text-align: left; padding: 8px 10px; font-size: var(--fs-micro); font-weight: 600; color: var(--text-muted); background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.lc-table th { text-align: left; padding: 8px 8px; font-size: var(--fs-micro); font-weight: 600; color: var(--text-muted); background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
 .lc-table th.text-center { text-align: center; }
-.lc-table td { padding: 6px 10px; vertical-align: middle; }
+.lc-table td { padding: 6px 8px; vertical-align: middle; }
 .lc-table td:first-child { white-space: nowrap; }
 .lc-table tbody tr { border-bottom: 1px solid var(--border); }
 .lc-table tbody tr:last-child { border-bottom: none; }
@@ -452,7 +458,6 @@ html[data-look="expresivo"] .lc-bar--bad .lc-bar-fill { background: linear-gradi
 .lc-intro-logo { width: 96px; height: 96px; }
 .lc-intro-word { font-family: var(--font-display); font-weight: var(--display-weight); letter-spacing: var(--display-tracking); font-size: 1.75rem; color: var(--text); }
 .lc-intro-ecg { width: 160px; height: 20px; fill: none; stroke: var(--signal); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-html[data-look="sobrio"] .lc-intro-ecg { display: none; }
 html[data-look="expresivo"] .lc-intro-word { background: linear-gradient(90deg, var(--accent), var(--signal)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 html.no-intro .lc-intro, .lc-intro.is-done { display: none; }
 
