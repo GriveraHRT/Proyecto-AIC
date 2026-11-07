@@ -127,11 +127,9 @@ html[data-look="expresivo"] .lc-wordmark {
   background-clip: text;
   color: transparent;
 }
-html[data-look="expresivo"] .btn-primary,
-html[data-look="expresivo"] .lc-tab-ind { background: var(--accent-grad); }
-html[data-look="expresivo"] .nav-tab.active { color: var(--accent-ink); }
-html[data-look="expresivo"] .lc-tab-ind { box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--accent) 55%, #000); }
-html[data-look="expresivo"][data-theme="dark"] .lc-tab-ind { box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--accent) 50%, #fff); }
+html[data-look="expresivo"] .btn-primary { background: var(--accent-grad); }
+html[data-look="expresivo"] .nav-tab.active { color: var(--accent); }
+html[data-look="expresivo"] .lc-tab-ind { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); }
 html[data-look="expresivo"] .btn-primary:hover { box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
 html[data-look="expresivo"] .lc-ic-chip { background: var(--accent-soft); color: var(--accent); }
 html[data-look="expresivo"] .lc-stat .stat-number { font-family: var(--font-display); }
