@@ -33,9 +33,9 @@
   <script>
     tailwind.config = { corePlugins: { preflight: true }, theme: { extend: { fontFamily: { sans: ['var(--font-ui)', 'system-ui', 'sans-serif'] } } } }
   </script>
-  <link rel="stylesheet" href="ui/look-expresivo.css?v=20261109" />
-  <link rel="stylesheet" href="ui/base.css?v=20261109" />
-  <link rel="stylesheet" href="ui/motion.css?v=20261109" />
+  <link rel="stylesheet" href="ui/look-expresivo.css?v=20261109b" />
+  <link rel="stylesheet" href="ui/base.css?v=20261109b" />
+  <link rel="stylesheet" href="ui/motion.css?v=20261109b" />
 </head>
 
 <body>
@@ -339,7 +339,10 @@
     <section id="panel-centros" class="module-panel">
       <div class="glass-card lc-card">
         <div class="flex items-center justify-between gap-2 flex-wrap mb-4">
-          <h2 class="lc-card-title mb-0"><span class="lc-ic-chip"><svg class="ic"><use href="#i-centros" /></svg></span>Estado de validación por centros</h2>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h2 class="lc-card-title mb-0"><span class="lc-ic-chip"><svg class="ic"><use href="#i-centros" /></svg></span>Estado de validación por centros</h2>
+            <span class="lc-live-badge" title="Sincronización automática en tiempo real activa (cada 3,5 s)"><span class="lc-live-dot"></span>En vivo</span>
+          </div>
           <button class="btn btn-sm btn-outline-danger" onclick="resetCentros()"><svg class="ic"><use href="#i-refresh" /></svg>Reiniciar centros</button>
         </div>
         <div class="overflow-x-auto lc-table-wrap">
@@ -478,8 +481,8 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261109"></script>
-  <script src="ui/ui-hooks.js?v=20261109"></script>
+  <script src="app.js?v=20261109b"></script>
+  <script src="ui/ui-hooks.js?v=20261109b"></script>
 </body>
 
 </html>

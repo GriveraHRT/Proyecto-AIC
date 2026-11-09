@@ -144,6 +144,13 @@ function getSheetData(name) {
 }
 
 function doGet(e) {
+  if (e && e.parameter && e.parameter.only === "centros") {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      data: { centros: getSheetData("Centros") }
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
 

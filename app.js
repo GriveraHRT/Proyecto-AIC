@@ -9,6 +9,7 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbyQi0G8TGuLa_EBMpqVNEuCUl3lcTihRAJI1HlhR6BE2s_fwpSUBo_EZMtcu5Z7J9f2gA/exec";
 const ADMIN_PASSWORD = "lab2025";
 const POLL_INTERVAL_MS = 10000;
+const CENTROS_POLL_MS = 3500;
 const ALERT_URGENTES_MS = 20 * 60 * 1000;   // 20 minutos
 const ALERT_MUESTRAS_MS = 2 * 60 * 60 * 1000; // 2 horas
 
@@ -24,7 +25,22 @@ const ESTADOS_CENTRO = [
 
 let datos = { errores: [], muestras: [], pendientes: [], curvas: [], urgentes: [], recordatorios: [], custom: [], centros: [], maestro_examenes: [], chat: [] };
 let examenesAgregados = [], examenesEliminados = [], examenesPendientes = [];
-let confirmCallback = null, pollTimer = null, pendingSaves = 0, lastMutationTime = 0;
+let confirmCallback = null, pollTimer = null, centrosPollTimer = null, pendingSaves = 0, lastMutationTime = 0;
+let centrosFetching = false, centrosDebounceTimers = {};
+let centrosSyncChannel = null;
+try {
+  if (typeof BroadcastChannel !== "undefined") {
+    centrosSyncChannel = new BroadcastChannel("labcontrol_centros_sync");
+    centrosSyncChannel.onmessage = (ev) => {
+      if (ev.data && ev.data.type === "centro_update") {
+        applyRemoteCentroUpdate(ev.data.centro, ev.data.field, ev.data.value, true);
+      } else if (ev.data && ev.data.type === "centros_reset") {
+        datos.centros.forEach(c => { c.Estado = "NO REVISADO :("; c["Pdte Rev"] = ""; c["Pdte Val"] = ""; c["Rev Hasta"] = ""; c.Responsable = ""; });
+        renderCentros();
+      }
+    };
+  }
+} catch (e) {}
 let alertTimerUrgentes = null, alertTimerMuestras = null, alertTimerPendientes = null;
 let cacheHistorico = {};
 let currentStatsErrors = [];
@@ -97,6 +113,7 @@ function switchTab(id) {
       renderStats();
     }
   }
+  if (id === "centros") pollCentrosFast();
   if (id === "chat") scrollChatBottom();
 }
 
@@ -283,14 +300,42 @@ document.addEventListener("visibilitychange", () => {
 });
 function iniciarPolling() {
   if (pollTimer) clearInterval(pollTimer);
+  if (centrosPollTimer) clearInterval(centrosPollTimer);
   if (tabVisible) {
     pollTimer = setInterval(() => cargarDatos(false), POLL_INTERVAL_MS);
+    centrosPollTimer = setInterval(() => {
+      if (document.getElementById("panel-centros")?.classList.contains("active")) {
+        pollCentrosFast();
+      }
+    }, CENTROS_POLL_MS);
   }
 }
 function detenerPolling() {
   if (pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
+  }
+  if (centrosPollTimer) {
+    clearInterval(centrosPollTimer);
+    centrosPollTimer = null;
+  }
+}
+async function pollCentrosFast() {
+  if (centrosFetching || pendingSaves > 0) return;
+  const fetchStartTime = Date.now();
+  centrosFetching = true;
+  try {
+    const r = await fetch(`${API_URL}?only=centros&t=${fetchStartTime}`);
+    const j = await r.json();
+    if (fetchStartTime < lastMutationTime || pendingSaves > 0) return;
+    if (j && j.success && j.data && Array.isArray(j.data.centros)) {
+      syncCentrosRemoteData(j.data.centros, !datos.centros.length);
+      setSyncStatus("ok");
+    }
+  } catch (e) {
+    // Error silencioso en fast-poll
+  } finally {
+    centrosFetching = false;
   }
 }
 async function cargarDatos(loader) {
@@ -307,7 +352,9 @@ async function cargarDatos(loader) {
   }
 
   if (d) { 
-    datos = d; 
+    const prevCentros = datos.centros || [];
+    datos = d;
+    datos.centros = prevCentros;
     datos.pendientes = datos.pendientes || [];
     poblarMuestraExamenes(); 
     renderErrores(); 
@@ -323,12 +370,8 @@ async function cargarDatos(loader) {
     } else {
       renderCustom(); 
     }
-    
-    if (!loader && document.getElementById("tablaCentros")?.contains(document.activeElement)) {
-      // El usuario está escribiendo en la tabla de centros, no re-renderizar ahora
-    } else {
-      renderCentros(); 
-    }
+
+    syncCentrosRemoteData(d.centros || [], loader);
 
     renderChat(); 
     setSyncStatus("ok"); 
@@ -889,10 +932,134 @@ function renderCentros() {
   tb.innerHTML = datos.centros.map(c => {
     const e = c.Estado || "NO REVISADO :(";
     const info = ESTADOS_CENTRO.find(s => s.value === e) || ESTADOS_CENTRO[0];
-    return `<tr class="row-hover"><td class="px-2 py-2 font-semibold text-xs">${esc(c.Centro)}</td><td class="px-2 py-2 text-center"><select onchange="updateCentro('${escA(c.Centro)}','Estado',this.value)" class="lc-state ${info.css}">${ESTADOS_CENTRO.map(s => `<option value="${s.value}" ${s.value === e ? 'selected' : ''}>${s.label}</option>`).join("")}</select></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Pdte Rev"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Pdte Rev',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Pdte Val"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Pdte Val',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c["Rev Hasta"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Rev Hasta',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" value="${esc(c.Responsable || '')}" placeholder="—" maxlength="10" onkeydown="if(event.key==='Enter')this.blur()" onchange="updateCentro('${escA(c.Centro)}','Responsable',this.value.toUpperCase())" class="input-field text-center text-[10px] font-bold" style="width:70px;text-transform:uppercase;" /></td></tr>`;
+    return `<tr class="row-hover" data-centro="${esc(c.Centro)}"><td class="px-2 py-2 font-semibold text-xs">${esc(c.Centro)}</td><td class="px-2 py-2 text-center"><select data-centro="${esc(c.Centro)}" data-field="Estado" onchange="updateCentro('${escA(c.Centro)}','Estado',this.value)" class="lc-state ${info.css}">${ESTADOS_CENTRO.map(s => `<option value="${s.value}" ${s.value === e ? 'selected' : ''}>${s.label}</option>`).join("")}</select></td><td class="px-1 py-2 text-center"><input type="text" data-centro="${esc(c.Centro)}" data-field="Pdte Rev" value="${esc(c["Pdte Rev"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" oninput="scheduleUpdateCentro('${escA(c.Centro)}','Pdte Rev',this.value)" onchange="flushUpdateCentro('${escA(c.Centro)}','Pdte Rev',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" data-centro="${esc(c.Centro)}" data-field="Pdte Val" value="${esc(c["Pdte Val"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" oninput="scheduleUpdateCentro('${escA(c.Centro)}','Pdte Val',this.value)" onchange="flushUpdateCentro('${escA(c.Centro)}','Pdte Val',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" data-centro="${esc(c.Centro)}" data-field="Rev Hasta" value="${esc(c["Rev Hasta"] || '')}" placeholder="—" onkeydown="if(event.key==='Enter')this.blur()" oninput="scheduleUpdateCentro('${escA(c.Centro)}','Rev Hasta',this.value)" onchange="flushUpdateCentro('${escA(c.Centro)}','Rev Hasta',this.value)" class="input-field text-center text-[10px]" style="width:80px;" /></td><td class="px-1 py-2 text-center"><input type="text" data-centro="${esc(c.Centro)}" data-field="Responsable" value="${esc(c.Responsable || '')}" placeholder="—" maxlength="10" onkeydown="if(event.key==='Enter')this.blur()" oninput="this.value=this.value.toUpperCase();scheduleUpdateCentro('${escA(c.Centro)}','Responsable',this.value)" onchange="flushUpdateCentro('${escA(c.Centro)}','Responsable',this.value.toUpperCase())" class="input-field text-center text-[10px] font-bold" style="width:70px;text-transform:uppercase;" /></td></tr>`;
   }).join("");
 }
-function updateCentro(c, f, v) { const i = datos.centros.find(x => x.Centro === c); if (i) i[f] = v; renderCentros(); apiPostBg({ action: "update", sheet: "Centros", id: c, updates: { [f]: v } }); showToast(`${c} actualizado`, "success"); }
+function updateCentro(c, f, v, silentToast) {
+  const i = datos.centros.find(x => x.Centro === c);
+  if (i) {
+    if (i[f] === v && silentToast) return;
+    i[f] = v;
+  }
+  if (f === "Estado") {
+    const sel = document.querySelector(`#tablaCentros select[data-centro="${CSS.escape(c)}"][data-field="Estado"]`);
+    if (sel) {
+      const info = ESTADOS_CENTRO.find(s => s.value === v) || ESTADOS_CENTRO[0];
+      sel.className = `lc-state ${info.css}`;
+    }
+    if (v === "EN PROCESO") {
+      const respInp = document.querySelector(`#tablaCentros input[data-centro="${CSS.escape(c)}"][data-field="Responsable"]`);
+      if (respInp && !respInp.value.trim()) {
+        setTimeout(() => { respInp.focus(); respInp.select(); }, 20);
+      }
+    }
+  }
+  try {
+    if (centrosSyncChannel) {
+      centrosSyncChannel.postMessage({ type: "centro_update", centro: c, field: f, value: v });
+    }
+  } catch (e) {}
+  apiPostBg({ action: "update", sheet: "Centros", id: c, updates: { [f]: v } });
+  if (!silentToast) showToast(`${c} actualizado`, "success");
+}
+
+function scheduleUpdateCentro(c, f, v) {
+  const key = `${c}__${f}`;
+  if (centrosDebounceTimers[key]) clearTimeout(centrosDebounceTimers[key]);
+  const i = datos.centros.find(x => x.Centro === c);
+  if (i) i[f] = v;
+  lastMutationTime = Date.now();
+  try {
+    if (centrosSyncChannel) {
+      centrosSyncChannel.postMessage({ type: "centro_update", centro: c, field: f, value: v });
+    }
+  } catch (e) {}
+  centrosDebounceTimers[key] = setTimeout(() => {
+    delete centrosDebounceTimers[key];
+    apiPostBg({ action: "update", sheet: "Centros", id: c, updates: { [f]: v } });
+  }, 550);
+}
+
+function flushUpdateCentro(c, f, v) {
+  const key = `${c}__${f}`;
+  if (centrosDebounceTimers[key]) {
+    clearTimeout(centrosDebounceTimers[key]);
+    delete centrosDebounceTimers[key];
+    const i = datos.centros.find(x => x.Centro === c);
+    if (i) i[f] = v;
+    apiPostBg({ action: "update", sheet: "Centros", id: c, updates: { [f]: v } });
+    showToast(`${c} actualizado`, "success");
+  }
+}
+
+function applyRemoteCentroUpdate(c, f, v, animate) {
+  const item = datos.centros.find(x => x.Centro === c);
+  if (!item) return;
+  const oldVal = item[f] || "";
+  const newVal = v || "";
+  if (oldVal === newVal) return;
+
+  const tb = document.getElementById("tablaCentros");
+  if (!tb) { item[f] = newVal; return; }
+
+  const ctrl = tb.querySelector(`[data-centro="${CSS.escape(c)}"][data-field="${CSS.escape(f)}"]`);
+  if (ctrl && document.activeElement === ctrl) {
+    // El usuario está editando activamente esta celda específica; no pisar su cursor
+    return;
+  }
+
+  item[f] = newVal;
+  if (ctrl) {
+    ctrl.value = newVal;
+    if (f === "Estado") {
+      const info = ESTADOS_CENTRO.find(s => s.value === (newVal || "NO REVISADO :(")) || ESTADOS_CENTRO[0];
+      ctrl.className = `lc-state ${info.css}`;
+    }
+    if (animate) {
+      const tr = ctrl.closest("tr");
+      if (tr) {
+        tr.classList.remove("lc-centro-updated");
+        void tr.offsetWidth;
+        tr.classList.add("lc-centro-updated");
+      }
+      if (f === "Estado" && newVal === "EN PROCESO") {
+        const resp = item.Responsable ? ` (${item.Responsable})` : "";
+        showToast(`⚡ ${c} ahora EN PROCESO${resp}`, "info");
+      }
+    }
+  } else {
+    renderCentros();
+  }
+}
+
+function syncCentrosRemoteData(newCentros, isInitialLoad) {
+  if (!Array.isArray(newCentros)) return;
+  const tb = document.getElementById("tablaCentros");
+  if (isInitialLoad || !datos.centros.length || !tb || !tb.querySelector("tr[data-centro]")) {
+    datos.centros = newCentros;
+    renderCentros();
+    return;
+  }
+  const fields = ["Estado", "Pdte Rev", "Pdte Val", "Rev Hasta", "Responsable"];
+  newCentros.forEach(nc => {
+    const existing = datos.centros.find(x => x.Centro === nc.Centro);
+    if (!existing) {
+      datos.centros = newCentros;
+      renderCentros();
+      return;
+    }
+    // Si cambió a EN PROCESO junto con Responsable en el mismo ciclo, actualizar Responsable primero para que el aviso lo incluya
+    if (nc.Responsable !== existing.Responsable) {
+      applyRemoteCentroUpdate(nc.Centro, "Responsable", nc.Responsable, true);
+    }
+    fields.forEach(f => {
+      if (f === "Responsable") return;
+      if ((nc[f] || "") !== (existing[f] || "")) {
+        applyRemoteCentroUpdate(nc.Centro, f, nc[f] || "", true);
+      }
+    });
+  });
+}
 
 function resetCentros() {
   showConfirm("Reiniciar centros", "Se borrarán estado, pendientes y responsable de todos los centros.", async () => {
@@ -900,6 +1067,7 @@ function resetCentros() {
     if (r) {
       datos.centros.forEach(c => { c.Estado = "NO REVISADO :("; c["Pdte Rev"] = ""; c["Pdte Val"] = ""; c["Rev Hasta"] = ""; c.Responsable = ""; });
       renderCentros();
+      try { if (centrosSyncChannel) centrosSyncChannel.postMessage({ type: "centros_reset" }); } catch (e) {}
       showToast("Centros reiniciados", "success");
     }
   });
