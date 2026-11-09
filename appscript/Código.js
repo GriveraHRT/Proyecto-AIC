@@ -10,6 +10,7 @@ function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = {
     "Errores": ["Fecha", "Día", "Acción", "N° Petición", "Examen", "Usuario"],
+    "Historico_Errores": ["Fecha", "Día", "Acción", "N° Petición", "Examen", "Usuario", "Semana_Cierre"],
     "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen", "Almacenada", "Fecha"],
     "Pizarra_Pendientes": ["ID", "N° Petición", "Examen", "Comentario", "Procesada", "Fecha"],
     "Pizarra_Curvas": ["ID", "N° Petición", "Validada", "Fecha"],
@@ -75,6 +76,7 @@ function setup() {
 function migrateHeaders() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var expected = {
+    "Historico_Errores": ["Fecha", "Día", "Acción", "N° Petición", "Examen", "Usuario", "Semana_Cierre"],
     "Pizarra_Muestras": ["ID", "Tipo", "N° Petición", "Examen", "Almacenada", "Fecha"],
     "Pizarra_Pendientes": ["ID", "N° Petición", "Examen", "Comentario", "Procesada", "Fecha"],
     "Pizarra_Curvas": ["ID", "N° Petición", "Validada", "Fecha"],
@@ -96,6 +98,20 @@ function migrateHeaders() {
   }
 }
 
+function toIsoDateStr(val) {
+  if (!val) return "";
+  if (typeof val.getTime === "function") {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  var s = val.toString().trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var d = new Date(s.replace(/\s*\(.*\)$/, ""));
+  if (!isNaN(d.getTime())) {
+    return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return s;
+}
+
 function getSheetData(name) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(name);
@@ -109,8 +125,17 @@ function getSheetData(name) {
     var hasData = false;
     for (var j = 0; j < headers.length; j++) {
       if (headers[j]) {
-        obj[headers[j]] = data[i][j] !== undefined && data[i][j] !== null ? data[i][j].toString() : "";
-        if (data[i][j]) hasData = true;
+        var cellVal = data[i][j];
+        if (cellVal !== undefined && cellVal !== null && cellVal !== "") {
+          if (headers[j] === "Semana_Cierre") {
+            obj[headers[j]] = toIsoDateStr(cellVal);
+          } else {
+            obj[headers[j]] = cellVal.toString();
+          }
+          hasData = true;
+        } else {
+          obj[headers[j]] = "";
+        }
       }
     }
     if (hasData) rows.push(obj);
@@ -169,6 +194,7 @@ function handleAction(payload) {
   var action = payload.action;
 
   if (action === "cerrar_semana") return procesarCierreSemana();
+  if (action === "consolidar_backups") return consolidarBackups();
 
   if (action === "reset_centros") {
     var centrosSheet = ss.getSheetByName("Centros");
@@ -182,25 +208,90 @@ function handleAction(payload) {
 
   if (action === "get_historical_errors") {
     var limit = payload.limit;
+    var startDate = payload.startDate;
+    var endDate = payload.endDate;
+
+    var minBackupDate = "";
+    var maxBackupDate = "";
+    if (startDate) {
+      var ds = new Date(startDate + "T00:00:00");
+      ds.setDate(ds.getDate() - 10);
+      minBackupDate = Utilities.formatDate(ds, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    }
+    if (endDate) {
+      var de = new Date(endDate + "T00:00:00");
+      de.setDate(de.getDate() + 25);
+      maxBackupDate = Utilities.formatDate(de, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    }
+
+    var allBackupErrors = [];
+    var weeksSet = {};
+
+    // 1. Leer de la hoja consolidada Historico_Errores
+    var histSheet = ss.getSheetByName("Historico_Errores");
+    if (histSheet && histSheet.getLastRow() > 1) {
+      var histData = getSheetData("Historico_Errores");
+      for (var h = 0; h < histData.length; h++) {
+        var rowObj = histData[h];
+        var sem = rowObj["Semana_Cierre"] || "";
+        if (sem) weeksSet[sem] = true;
+        allBackupErrors.push(rowObj);
+      }
+    }
+
+    // 2. Fallback: si quedara alguna pestaña Backup_* sin migrar, incluirla también
     var sheets = ss.getSheets();
-    var backupSheetNames = [];
+    var legacyBackupNames = [];
     for (var i = 0; i < sheets.length; i++) {
       var name = sheets[i].getName();
       if (name.indexOf("Backup_") === 0) {
-        backupSheetNames.push(name);
+        legacyBackupNames.push(name);
       }
     }
-    backupSheetNames.sort().reverse();
-    if (typeof limit === "number" && limit > 0) {
-      backupSheetNames = backupSheetNames.slice(0, limit);
+    if (legacyBackupNames.length > 0) {
+      legacyBackupNames.sort().reverse();
+      for (var k = 0; k < legacyBackupNames.length; k++) {
+        var bName = legacyBackupNames[k];
+        var bDate = bName.replace("Backup_", "");
+        if (!weeksSet[bDate]) {
+          weeksSet[bDate] = true;
+          var sheetData = getSheetData(bName);
+          for (var sIdx = 0; sIdx < sheetData.length; sIdx++) {
+            sheetData[sIdx]["Semana_Cierre"] = bDate;
+            allBackupErrors.push(sheetData[sIdx]);
+          }
+        }
+      }
     }
-    var allBackupErrors = [];
-    for (var k = 0; k < backupSheetNames.length; k++) {
-      var sheetData = getSheetData(backupSheetNames[k]);
-      allBackupErrors = allBackupErrors.concat(sheetData);
+
+    var allWeeks = Object.keys(weeksSet).sort().reverse();
+    var targetWeeks = allWeeks;
+
+    if (startDate || endDate) {
+      targetWeeks = allWeeks.filter(function (bDate) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(bDate)) return true;
+        if (minBackupDate && bDate < minBackupDate) return false;
+        if (maxBackupDate && bDate > maxBackupDate) return false;
+        return true;
+      });
+      var allowedRangeMap = {};
+      for (var tw = 0; tw < targetWeeks.length; tw++) allowedRangeMap[targetWeeks[tw]] = true;
+      allBackupErrors = allBackupErrors.filter(function (r) {
+        var sem = r["Semana_Cierre"] || "";
+        return !sem || allowedRangeMap[sem] === true;
+      });
+    } else if (typeof limit === "number" && limit > 0) {
+      targetWeeks = allWeeks.slice(0, limit);
+      var allowedLimitMap = {};
+      for (var lw = 0; lw < targetWeeks.length; lw++) allowedLimitMap[targetWeeks[lw]] = true;
+      allBackupErrors = allBackupErrors.filter(function (r) {
+        var sem = r["Semana_Cierre"] || "";
+        return allowedLimitMap[sem] === true;
+      });
     }
+
     return {
-      backupsLoaded: backupSheetNames,
+      backupsLoaded: targetWeeks,
       errores: allBackupErrors
     };
   }
@@ -452,11 +543,27 @@ function procesarCierreSemana() {
     throw new Error("Error correo: " + e.toString());
   }
 
-  // --- Backup en hoja dentro del mismo spreadsheet ---
-  var backup = ss.insertSheet("Backup_" + fecha);
-  backup.getRange(1, 1, data.length, data[0].length).setValues(data);
-
-
+  // --- Backup consolidado en Historico_Errores ---
+  var histSheet = ensureHistoricoSheet(ss);
+  var histRows = [];
+  for (var bi = 1; bi < data.length; bi++) {
+    var r = data[bi];
+    if (r.join("").trim() !== "") {
+      histRows.push([
+        r[0] !== undefined ? r[0] : "",
+        r[1] !== undefined ? r[1] : "",
+        r[2] !== undefined ? r[2] : "",
+        r[3] !== undefined ? r[3] : "",
+        r[4] !== undefined ? r[4] : "",
+        r[5] !== undefined ? r[5] : "",
+        fecha
+      ]);
+    }
+  }
+  if (histRows.length > 0) {
+    var nextRow = histSheet.getLastRow() + 1;
+    histSheet.getRange(nextRow, 1, histRows.length, 7).setValues(histRows);
+  }
 
   // --- Limpiar SOLO Errores (NO Pizarra) ---
   if (sheetErrores.getMaxRows() > 1) {
@@ -473,6 +580,148 @@ function procesarCierreSemana() {
   }
 
   return "Semana cerrada, correo enviado con XLSX y estadísticas.";
+}
+
+function ensureHistoricoSheet(ss) {
+  var headers = ["Fecha", "Día", "Acción", "N° Petición", "Examen", "Usuario", "Semana_Cierre"];
+  var sheet = ss.getSheetByName("Historico_Errores");
+  if (!sheet) {
+    sheet = ss.insertSheet("Historico_Errores");
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+  } else if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold");
+  }
+  return sheet;
+}
+
+function consolidarBackups() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var histSheet = ensureHistoricoSheet(ss);
+
+  // Semanas ya migradas en Historico_Errores (evitar duplicados)
+  var existingWeeks = {};
+  var initialDataRows = Math.max(0, histSheet.getLastRow() - 1);
+  if (initialDataRows > 0) {
+    var existingVals = histSheet.getRange(2, 7, initialDataRows, 1).getValues();
+    for (var e = 0; e < existingVals.length; e++) {
+      var ev = existingVals[e][0];
+      if (ev) {
+        var evStr = (ev instanceof Date) ? Utilities.formatDate(ev, Session.getScriptTimeZone(), "yyyy-MM-dd") : ev.toString().trim();
+        existingWeeks[evStr] = true;
+      }
+    }
+  }
+
+  var allSheets = ss.getSheets();
+  var backupNames = [];
+  for (var i = 0; i < allSheets.length; i++) {
+    var sName = allSheets[i].getName();
+    if (sName.indexOf("Backup_") === 0) {
+      backupNames.push(sName);
+    }
+  }
+  // Orden cronológico ascendente (más antiguo primero)
+  backupNames.sort();
+
+  var rowsToAppend = [];
+  var sheetsToDelete = [];
+  var sourceRowCount = 0;
+
+  for (var k = 0; k < backupNames.length; k++) {
+    var bName = backupNames[k];
+    var semanaCierre = bName.replace("Backup_", "").trim();
+    var bSheet = ss.getSheetByName(bName);
+    if (!bSheet) continue;
+
+    var bData = bSheet.getDataRange().getValues();
+    var validSheetRows = [];
+    for (var rIdx = 1; rIdx < bData.length; rIdx++) {
+      var r = bData[rIdx];
+      var hasContent = false;
+      for (var cIdx = 0; cIdx < 6; cIdx++) {
+        if (r[cIdx] !== undefined && r[cIdx] !== null && r[cIdx].toString().trim() !== "") {
+          hasContent = true;
+          break;
+        }
+      }
+      if (hasContent) {
+        validSheetRows.push([
+          r[0] !== undefined ? r[0] : "",
+          r[1] !== undefined ? r[1] : "",
+          r[2] !== undefined ? r[2] : "",
+          r[3] !== undefined ? r[3] : "",
+          r[4] !== undefined ? r[4] : "",
+          r[5] !== undefined ? r[5] : "",
+          semanaCierre
+        ]);
+      }
+    }
+
+    sourceRowCount += validSheetRows.length;
+    if (!existingWeeks[semanaCierre]) {
+      for (var v = 0; v < validSheetRows.length; v++) {
+        rowsToAppend.push(validSheetRows[v]);
+      }
+    }
+    sheetsToDelete.push(bName);
+  }
+
+  if (rowsToAppend.length > 0) {
+    var startRow = histSheet.getLastRow() + 1;
+    histSheet.getRange(startRow, 1, rowsToAppend.length, 7).setValues(rowsToAppend);
+    SpreadsheetApp.flush();
+  }
+
+  var finalDataRows = Math.max(0, histSheet.getLastRow() - 1);
+  if (finalDataRows < initialDataRows + rowsToAppend.length || finalDataRows < sourceRowCount) {
+    throw new Error("Verificación fallida: se esperaban al menos " + sourceRowCount + " filas en Historico_Errores, pero hay " + finalDataRows + ". No se eliminó ninguna pestaña Backup_*.");
+  }
+
+  // Eliminar pestañas Backup_* una vez verificada la integridad
+  var deletedNames = [];
+  for (var d = 0; d < sheetsToDelete.length; d++) {
+    var delSheet = ss.getSheetByName(sheetsToDelete[d]);
+    if (delSheet) {
+      ss.deleteSheet(delSheet);
+      deletedNames.push(sheetsToDelete[d]);
+    }
+  }
+
+  // Ordenar las pestañas principales al inicio a la izquierda
+  var desiredOrder = [
+    "Errores",
+    "Historico_Errores",
+    "Maestro_Examenes",
+    "Centros",
+    "Pizarra_Muestras",
+    "Pizarra_Pendientes",
+    "Pizarra_Curvas",
+    "Pizarra_Urgentes",
+    "Pizarra_Recordatorios",
+    "Pizarra_Custom",
+    "Chat"
+  ];
+  var pos = 1;
+  for (var o = 0; o < desiredOrder.length; o++) {
+    var targetSheet = ss.getSheetByName(desiredOrder[o]);
+    if (targetSheet) {
+      ss.setActiveSheet(targetSheet);
+      ss.moveActiveSheet(pos);
+      pos++;
+    }
+  }
+  var mainErrSheet = ss.getSheetByName("Errores");
+  if (mainErrSheet) ss.setActiveSheet(mainErrSheet);
+
+  return {
+    backupSheetsFound: backupNames.length,
+    backupSheetsDeleted: deletedNames.length,
+    deletedSheetNames: deletedNames,
+    rowsMigratedNow: rowsToAppend.length,
+    totalHistoricoRows: finalDataRows
+  };
 }
 
 

@@ -302,6 +302,7 @@
   }
   wrap("switchTab", function (orig, a) { if (a[0] === "stats") statsAnimatePending = true; return orig.apply(this, a); });
   wrap("changeStatsRange", function (orig, a) { statsAnimatePending = true; return orig.apply(this, a); });
+  wrap("applyCustomStatsRange", function (orig, a) { if (!a[0]) statsAnimatePending = true; return orig.apply(this, a); });
   wrap("renderStats", function (orig, a) {
     statsGen++;
     var r = orig.apply(this, a);

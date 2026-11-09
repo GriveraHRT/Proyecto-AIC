@@ -33,9 +33,9 @@
   <script>
     tailwind.config = { corePlugins: { preflight: true }, theme: { extend: { fontFamily: { sans: ['var(--font-ui)', 'system-ui', 'sans-serif'] } } } }
   </script>
-  <link rel="stylesheet" href="ui/look-expresivo.css?v=20261107" />
-  <link rel="stylesheet" href="ui/base.css?v=20261107" />
-  <link rel="stylesheet" href="ui/motion.css?v=20261107" />
+  <link rel="stylesheet" href="ui/look-expresivo.css?v=20261109" />
+  <link rel="stylesheet" href="ui/base.css?v=20261109" />
+  <link rel="stylesheet" href="ui/motion.css?v=20261109" />
 </head>
 
 <body>
@@ -383,16 +383,26 @@
     <!-- ===== ESTADÍSTICAS ===== -->
     <section id="panel-stats" class="module-panel">
       <div class="glass-card lc-card">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5">
           <h2 class="lc-card-title mb-0"><span class="lc-ic-chip"><svg class="ic"><use href="#i-stats" /></svg></span>Estadísticas de errores</h2>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <label class="lc-label mb-0" for="statsRangeSelect">Rango</label>
             <select id="statsRangeSelect" class="select-field" style="width: auto;" onchange="changeStatsRange()">
               <option value="actual">Semana actual</option>
               <option value="4semanas">Últimas 4 semanas</option>
               <option value="12semanas">Últimas 12 semanas</option>
               <option value="todo">Todo el histórico</option>
+              <option value="personalizado">Rango personalizado</option>
             </select>
+            <div id="statsCustomRange" class="lc-stats-dates" style="display:none;">
+              <label class="lc-label mb-0" for="statsDateFrom">Desde</label>
+              <input type="date" id="statsDateFrom" class="input-field lc-date-input" onchange="applyCustomStatsRange()" aria-label="Fecha desde" />
+              <label class="lc-label mb-0" for="statsDateTo">Hasta</label>
+              <input type="date" id="statsDateTo" class="input-field lc-date-input" onchange="applyCustomStatsRange()" aria-label="Fecha hasta" />
+            </div>
+            <button type="button" class="btn btn-outline" onclick="exportarEstadisticasCSV()" title="Descargar reporte estadístico del rango seleccionado">
+              <svg class="ic"><use href="#i-download" /></svg><span>Exportar CSV</span>
+            </button>
           </div>
         </div>
         <div class="grid grid-cols-3 gap-3 mb-5">
@@ -468,8 +478,8 @@
     </div>
   </div>
 
-  <script src="app.js?v=20261107"></script>
-  <script src="ui/ui-hooks.js?v=20261107"></script>
+  <script src="app.js?v=20261109"></script>
+  <script src="ui/ui-hooks.js?v=20261109"></script>
 </body>
 
 </html>

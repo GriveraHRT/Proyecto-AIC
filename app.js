@@ -27,6 +27,7 @@ let examenesAgregados = [], examenesEliminados = [], examenesPendientes = [];
 let confirmCallback = null, pollTimer = null, pendingSaves = 0, lastMutationTime = 0;
 let alertTimerUrgentes = null, alertTimerMuestras = null, alertTimerPendientes = null;
 let cacheHistorico = {};
+let currentStatsErrors = [];
 
 // ===================== INIT =====================
 document.addEventListener("DOMContentLoaded", () => {
@@ -107,16 +108,41 @@ function autoDetectarDia() {
 }
 
 function fechaHoy() { return new Date().toLocaleDateString("es-CL"); }
+const isoDatesCache = new Map();
+function toISODate(f) {
+  if (!f) return "";
+  if (isoDatesCache.has(f)) return isoDatesCache.get(f);
+  const s = String(f).trim();
+  let res = "";
+  const mDMY = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if (mDMY) {
+    res = `${mDMY[3]}-${mDMY[2].padStart(2, "0")}-${mDMY[1].padStart(2, "0")}`;
+  } else {
+    const mYMD = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+    if (mYMD) {
+      res = `${mYMD[1]}-${mYMD[2].padStart(2, "0")}-${mYMD[3].padStart(2, "0")}`;
+    } else {
+      const clean = s.replace(/\s*\(.*\)$/, "");
+      const d = new Date(clean);
+      if (!isNaN(d.getTime())) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        res = `${yyyy}-${mm}-${dd}`;
+      }
+    }
+  }
+  isoDatesCache.set(f, res);
+  return res;
+}
 function formatFecha(f) {
   if (!f) return "";
-  // Already in dd-mm-yyyy or dd/mm/yyyy
-  if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/.test(f)) return f;
-  // Try parsing as Date
-  var d = new Date(f);
-  if (isNaN(d.getTime())) return f;
-  var dd = String(d.getDate()).padStart(2, '0');
-  var mm = String(d.getMonth() + 1).padStart(2, '0');
-  return dd + '-' + mm + '-' + d.getFullYear();
+  const iso = toISODate(f);
+  if (iso) {
+    const [yyyy, mm, dd] = iso.split("-");
+    return `${dd}-${mm}-${yyyy}`;
+  }
+  return String(f);
 }
 
 // ===================== FUZZY SEARCH =====================
@@ -309,7 +335,9 @@ async function cargarDatos(loader) {
     
     // Actualizar estadísticas según el rango seleccionado
     const select = document.getElementById("statsRangeSelect");
-    if (select && select.value !== "actual") {
+    if (select && select.value === "personalizado") {
+      applyCustomStatsRange(true);
+    } else if (select && select.value !== "actual") {
       const cached = cacheHistorico[select.value];
       if (cached) {
         renderStats(datos.errores.concat(cached));
@@ -737,10 +765,11 @@ const parsedDatesCache = new Map();
 function parseFecha(f) {
   if (!f) return 0;
   if (parsedDatesCache.has(f)) return parsedDatesCache.get(f);
-  const parts = f.split(/[-\/]/);
-  let val;
-  if (parts.length === 3) {
-    val = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+  const iso = toISODate(f);
+  let val = 0;
+  if (iso) {
+    const [yyyy, mm, dd] = iso.split("-").map(Number);
+    val = new Date(yyyy, mm - 1, dd).getTime();
   } else {
     val = new Date(f).getTime() || 0;
   }
@@ -897,6 +926,7 @@ function scrollChatBottom() { setTimeout(() => { const c = document.getElementBy
 // ===================== ESTADÍSTICAS =====================
 function renderStats(customErrors) {
   const errs = customErrors || datos.errores;
+  currentStatsErrors = errs;
   const ag = errs.filter(e => (e["Acción"] || e["Acci\u00f3n"]) === "AGREGADO");
   const el = errs.filter(e => (e["Acción"] || e["Acci\u00f3n"]) === "ELIMINADO");
   document.getElementById("statTotal").textContent = errs.length;
@@ -922,34 +952,216 @@ function renderStats(customErrors) {
   document.getElementById("statsTopExEliminados").innerHTML = topExEl.length === 0 ? '<p class="lc-empty">Sin datos</p>' : topExEl.map(([x, c]) => `<div class="lc-bar-row lc-bar--bad"><span class="lc-bar-name">${esc(x)}</span><span class="lc-bar-val">${c}</span><div class="lc-bar"><div class="lc-bar-fill" style="width:${(c / maxEEl * 100).toFixed(0)}%;"></div></div></div>`).join("");
 }
 
+function filterErrorsByDateRange(list, fromISO, toISO) {
+  return list.filter(e => {
+    const iso = toISODate(e.Fecha);
+    if (!iso) return false;
+    if (fromISO && iso < fromISO) return false;
+    if (toISO && iso > toISO) return false;
+    return true;
+  });
+}
+
+async function applyCustomStatsRange(silent) {
+  const fromEl = document.getElementById("statsDateFrom");
+  const toEl = document.getElementById("statsDateTo");
+  if (!fromEl || !toEl) return;
+  const fromISO = fromEl.value;
+  const toISO = toEl.value;
+
+  if (!fromISO && !toISO) {
+    renderStats([]);
+    return;
+  }
+  if (fromISO && toISO && fromISO > toISO) {
+    if (!silent) showToast("La fecha 'Desde' no puede ser posterior a 'Hasta'", "error");
+    return;
+  }
+
+  const cacheKey = `custom_${fromISO || ""}_${toISO || ""}`;
+  let hist = cacheHistorico.todo || cacheHistorico[cacheKey];
+
+  if (!hist) {
+    if (silent) return;
+    const res = await apiPostBlock({
+      action: "get_historical_errors",
+      startDate: fromISO || "",
+      endDate: toISO || ""
+    });
+    if (res && res.errores) {
+      hist = res.errores;
+      cacheHistorico[cacheKey] = hist;
+    } else {
+      return;
+    }
+  }
+
+  const combined = datos.errores.concat(hist);
+  const filtered = filterErrorsByDateRange(combined, fromISO, toISO);
+  renderStats(filtered);
+}
+
 async function changeStatsRange() {
   const select = document.getElementById("statsRangeSelect");
   if (!select) return;
   const val = select.value;
-  
+  const customBox = document.getElementById("statsCustomRange");
+
+  if (customBox) {
+    customBox.style.display = val === "personalizado" ? "inline-flex" : "none";
+  }
+
   if (val === "actual") {
     renderStats();
     return;
   }
-  
+
+  if (val === "personalizado") {
+    const fromEl = document.getElementById("statsDateFrom");
+    const toEl = document.getElementById("statsDateTo");
+    if (fromEl && toEl && !fromEl.value && !toEl.value) {
+      const now = new Date();
+      const toISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const prev = new Date(now);
+      prev.setDate(prev.getDate() - 7);
+      const fromISO = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}-${String(prev.getDate()).padStart(2, "0")}`;
+      fromEl.value = fromISO;
+      toEl.value = toISO;
+    }
+    await applyCustomStatsRange();
+    return;
+  }
+
   let limit = 0;
   if (val === "4semanas") limit = 3;
   else if (val === "12semanas") limit = 11;
   else if (val === "todo") limit = -1;
-  
+
   if (cacheHistorico[val]) {
     renderStats(datos.errores.concat(cacheHistorico[val]));
     return;
   }
-  
+
   const res = await apiPostBlock({ action: "get_historical_errors", limit: limit });
   if (res && res.errores) {
     cacheHistorico[val] = res.errores;
     renderStats(datos.errores.concat(res.errores));
   } else {
     select.value = "actual";
+    if (customBox) customBox.style.display = "none";
     renderStats();
   }
+}
+
+function exportarEstadisticasCSV() {
+  const errs = currentStatsErrors && currentStatsErrors.length ? currentStatsErrors : (document.getElementById("statsRangeSelect")?.value === "actual" ? datos.errores : currentStatsErrors || []);
+  if (!errs || !errs.length) {
+    showToast("Sin datos en el rango seleccionado", "info");
+    return;
+  }
+
+  const select = document.getElementById("statsRangeSelect");
+  const val = select ? select.value : "actual";
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  let rangeLabel = "Semana actual";
+  let fileSlug = `Semana_Actual_${hoyISO}`;
+
+  if (val === "4semanas") {
+    rangeLabel = "Últimas 4 semanas";
+    fileSlug = `Ultimas_4_Semanas_${hoyISO}`;
+  } else if (val === "12semanas") {
+    rangeLabel = "Últimas 12 semanas";
+    fileSlug = `Ultimas_12_Semanas_${hoyISO}`;
+  } else if (val === "todo") {
+    rangeLabel = "Todo el histórico";
+    fileSlug = `Historico_Completo_${hoyISO}`;
+  } else if (val === "personalizado") {
+    const fromISO = document.getElementById("statsDateFrom")?.value || "";
+    const toISO = document.getElementById("statsDateTo")?.value || "";
+    const fromStr = fromISO ? formatFecha(fromISO) : "Inicio";
+    const toStr = toISO ? formatFecha(toISO) : "Hoy";
+    rangeLabel = `Rango personalizado (${fromStr} al ${toStr})`;
+    fileSlug = `Rango_${fromISO || "inicio"}_a_${toISO || hoyISO}`;
+  }
+
+  const ag = errs.filter(e => (e["Acción"] || e["Acci\u00f3n"]) === "AGREGADO");
+  const el = errs.filter(e => (e["Acción"] || e["Acci\u00f3n"]) === "ELIMINADO");
+
+  // Estadísticas por usuario (Total, Agregados, Eliminados)
+  const userMap = {};
+  errs.forEach(e => {
+    const u = e.Usuario || "?";
+    if (!userMap[u]) userMap[u] = { total: 0, ag: 0, el: 0 };
+    userMap[u].total++;
+    const acc = e["Acción"] || e["Acci\u00f3n"];
+    if (acc === "AGREGADO") userMap[u].ag++;
+    else if (acc === "ELIMINADO") userMap[u].el++;
+  });
+  const sortedUsers = Object.entries(userMap).sort((a, b) => b[1].total - a[1].total);
+
+  // Estadísticas por examen agregado
+  const exAgCount = {};
+  ag.forEach(e => { const x = e.Examen || "?"; exAgCount[x] = (exAgCount[x] || 0) + 1; });
+  const sortedExAg = Object.entries(exAgCount).sort((a, b) => b[1] - a[1]);
+
+  // Estadísticas por examen eliminado
+  const exElCount = {};
+  el.forEach(e => { const x = e.Examen || "?"; exElCount[x] = (exElCount[x] || 0) + 1; });
+  const sortedExEl = Object.entries(exElCount).sort((a, b) => b[1] - a[1]);
+
+  const csvRow = (cols) => cols.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",") + "\n";
+
+  let csv = "\uFEFF";
+  csv += csvRow(["REPORTE ESTADÍSTICO LABCONTROL", rangeLabel]);
+  csv += csvRow(["Fecha de generación", fechaHoy()]);
+  csv += "\n";
+
+  csv += csvRow(["RESUMEN DEL PERÍODO", ""]);
+  csv += csvRow(["Indicador", "Cantidad"]);
+  csv += csvRow(["Total Errores", errs.length]);
+  csv += csvRow(["Agregados", ag.length]);
+  csv += csvRow(["Eliminados", el.length]);
+  csv += "\n";
+
+  csv += csvRow(["USUARIOS CON MÁS ERRORES", "", "", ""]);
+  csv += csvRow(["Usuario", "Total Errores", "Agregados", "Eliminados"]);
+  sortedUsers.forEach(([u, st]) => {
+    csv += csvRow([u, st.total, st.ag, st.el]);
+  });
+  csv += "\n";
+
+  csv += csvRow(["EXÁMENES MÁS AGREGADOS", ""]);
+  csv += csvRow(["Examen", "Cantidad"]);
+  sortedExAg.forEach(([x, c]) => {
+    csv += csvRow([x, c]);
+  });
+  csv += "\n";
+
+  csv += csvRow(["EXÁMENES MÁS ELIMINADOS", ""]);
+  csv += csvRow(["Examen", "Cantidad"]);
+  sortedExEl.forEach(([x, c]) => {
+    csv += csvRow([x, c]);
+  });
+  csv += "\n";
+
+  csv += csvRow(["DETALLE DE REGISTROS DEL PERÍODO", "", "", "", "", ""]);
+  csv += csvRow(["Fecha", "Día", "Acción", "N° Petición", "Examen", "Usuario"]);
+  errs.forEach(e => {
+    csv += csvRow([
+      formatFecha(e.Fecha || ""),
+      e["Día"] || e["D\u00eda"] || "",
+      e["Acción"] || e["Acci\u00f3n"] || "",
+      e["N° Petición"] || "",
+      e.Examen || "",
+      e.Usuario || ""
+    ]);
+  });
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  a.download = `Estadisticas_LabControl_${fileSlug}.csv`;
+  a.click();
+  showToast("Reporte estadístico descargado", "success");
 }
 
 // ===================== ALERTAS =====================
@@ -1003,8 +1215,8 @@ function showAlerts(msgs, cssClass) {
 }
 
 // ===================== ADMIN =====================
-function cerrarSemana() { const p = document.getElementById("adminPass").value; if (p !== ADMIN_PASSWORD) { showToast("Contraseña incorrecta", "error"); return; } showConfirm("Cerrar semana", "Se exportará, se enviará el correo y se limpiará todo.", async () => { const r = await apiPostBlock({ action: "cerrar_semana" }); if (r) { showToast(typeof r === "string" ? r : "Semana cerrada", "success"); document.getElementById("adminPass").value = ""; cacheHistorico = {}; const select = document.getElementById("statsRangeSelect"); if (select) select.value = "actual"; await cargarDatos(false); } }); }
-function descargarCSVLocal() { if (!datos.errores.length) { showToast("Sin datos", "info"); return; } let csv = "\uFEFF" + "Fecha,Día,Acción,N° Petición,Examen,Usuario\n"; datos.errores.forEach(e => { csv += [e.Fecha || "", e["Día"] || "", e["Acción"] || "", e["N° Petición"] || "", e.Examen || "", e.Usuario || ""].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n"; }); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" })); a.download = `Errores_${new Date().toISOString().slice(0, 10)}.csv`; a.click(); showToast("CSV descargado", "success"); }
+function cerrarSemana() { const p = document.getElementById("adminPass").value; if (p !== ADMIN_PASSWORD) { showToast("Contraseña incorrecta", "error"); return; } showConfirm("Cerrar semana", "Se exportará, se enviará el correo y se limpiará todo.", async () => { const r = await apiPostBlock({ action: "cerrar_semana" }); if (r) { showToast(typeof r === "string" ? r : "Semana cerrada", "success"); document.getElementById("adminPass").value = ""; cacheHistorico = {}; const select = document.getElementById("statsRangeSelect"); if (select) select.value = "actual"; const customBox = document.getElementById("statsCustomRange"); if (customBox) customBox.style.display = "none"; await cargarDatos(false); } }); }
+function descargarCSVLocal() { if (!datos.errores.length) { showToast("Sin datos", "info"); return; } let csv = "\uFEFF" + "Fecha,Día,Acción,N° Petición,Examen,Usuario\n"; datos.errores.forEach(e => { csv += [formatFecha(e.Fecha || ""), e["Día"] || "", e["Acción"] || "", e["N° Petición"] || "", e.Examen || "", e.Usuario || ""].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n"; }); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" })); a.download = `Errores_${new Date().toISOString().slice(0, 10)}.csv`; a.click(); showToast("CSV descargado", "success"); }
 
 // ===================== HELPERS =====================
 function showToast(m, t) { const e = document.getElementById("toast"); e.className = `toast toast-${t} show`; e.textContent = m; setTimeout(() => e.classList.remove("show"), 3000); }
